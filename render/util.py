@@ -103,9 +103,12 @@ def cube_to_dir(s, x, y):
 def latlong_to_cubemap(latlong_map, res):
     cubemap = torch.zeros(6, res[0], res[1], latlong_map.shape[-1], dtype=torch.float32, device='cuda')
     for s in range(6):
+        # gy, gx = torch.meshgrid(torch.linspace(-1.0 + 1.0 / res[0], 1.0 - 1.0 / res[0], res[0], device='cuda'), 
+        #                         torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'),
+        #                         indexing='ij')
         gy, gx = torch.meshgrid(torch.linspace(-1.0 + 1.0 / res[0], 1.0 - 1.0 / res[0], res[0], device='cuda'), 
-                                torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'),
-                                indexing='ij')
+                                torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'))
+
         v = safe_normalize(cube_to_dir(s, gx, gy))
 
         tu = torch.atan2(v[..., 0:1], -v[..., 2:3]) / (2 * np.pi) + 0.5
@@ -116,9 +119,11 @@ def latlong_to_cubemap(latlong_map, res):
     return cubemap
 
 def cubemap_to_latlong(cubemap, res):
+    # gy, gx = torch.meshgrid(torch.linspace( 0.0 + 1.0 / res[0], 1.0 - 1.0 / res[0], res[0], device='cuda'), 
+    #                         torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'),
+    #                         indexing='ij')
     gy, gx = torch.meshgrid(torch.linspace( 0.0 + 1.0 / res[0], 1.0 - 1.0 / res[0], res[0], device='cuda'), 
-                            torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'),
-                            indexing='ij')
+                            torch.linspace(-1.0 + 1.0 / res[1], 1.0 - 1.0 / res[1], res[1], device='cuda'))
     
     sintheta, costheta = torch.sin(gy*np.pi), torch.cos(gy*np.pi)
     sinphi, cosphi     = torch.sin(gx*np.pi), torch.cos(gx*np.pi)

@@ -58,11 +58,14 @@ class DMTet:
 
     def map_uv(self, faces, face_gidx, max_idx):
         N = int(np.ceil(np.sqrt((max_idx+1)//2)))
+        # tex_y, tex_x = torch.meshgrid(
+        #     torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
+        #     torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
+        #     indexing='ij'
+        # )
         tex_y, tex_x = torch.meshgrid(
             torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
-            torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
-            indexing='ij'
-        )
+            torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"))
 
         pad = 0.9 / N
 
