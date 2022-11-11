@@ -8,7 +8,7 @@
 # its affiliates is strictly prohibited.
 
 import torch
-
+import pdb
 #----------------------------------------------------------------------------
 # HDR image losses
 #----------------------------------------------------------------------------
@@ -27,6 +27,8 @@ def _RELMSE(img, target, eps=0.1):
     return torch.mean(nom / denom)
 
 def image_loss_fn(img, target, loss, tonemapper):
+    pdb.set_trace()
+
     if tonemapper == 'log_srgb':
         img    = _tonemap_srgb(torch.log(torch.clamp(img, min=0, max=65535) + 1))
         target = _tonemap_srgb(torch.log(torch.clamp(target, min=0, max=65535) + 1))

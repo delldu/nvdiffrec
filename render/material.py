@@ -13,6 +13,7 @@ import torch
 
 from . import util
 from . import texture
+import pdb
 
 ######################################################################################
 # Wrapper to make materials behave like a python dict, but register textures as 
@@ -25,6 +26,7 @@ class Material(torch.nn.Module):
         for key in mat_dict.keys():
             self.mat_keys.add(key)
             self[key] = mat_dict[key]
+        # mat_dict -- {'name': 'feathers'}
 
     def __contains__(self, key):
         return hasattr(self, key)
@@ -41,13 +43,15 @@ class Material(torch.nn.Module):
         delattr(self, key)
 
     def keys(self):
-        return self.mat_keys
+        return self.mat_keys # {'name'}
 
 ######################################################################################
 # .mtl material format loading / storing
 ######################################################################################
 @torch.no_grad()
 def load_mtl(fn, clear_ks=True):
+    # fn -- 'data/bob/bob_tri.mtl'
+
     import re
     mtl_path = os.path.dirname(fn)
 
@@ -72,30 +76,38 @@ def load_mtl(fn, clear_ks=True):
 
     # Convert everything to textures. Our code expects 'kd' and 'ks' to be texture maps. So replace constants with 1x1 maps
     for mat in materials:
-        if not 'bsdf' in mat:
+        # mtl_path -- 'data/bob'
+        if not 'bsdf' in mat: # False
             mat['bsdf'] = 'pbr'
 
-        if 'map_kd' in mat:
-            mat['kd'] = texture.load_texture2D(os.path.join(mtl_path, mat['map_kd']))
+        if 'map_kd' in mat: # True
+            mat['kd'] = texture.load_texture2D(os.path.join(mtl_path, mat['map_kd'])) # 'data/bob/bob_diffuse.png'
         else:
             mat['kd'] = texture.Texture2D(mat['kd'])
         
-        if 'map_ks' in mat:
+        if 'map_ks' in mat: # False
             mat['ks'] = texture.load_texture2D(os.path.join(mtl_path, mat['map_ks']), channels=3)
         else:
             mat['ks'] = texture.Texture2D(mat['ks'])
 
-        if 'bump' in mat:
+        if 'bump' in mat: # False
             mat['normal'] = texture.load_texture2D(os.path.join(mtl_path, mat['bump']), lambda_fn=lambda x: x * 2 - 1, channels=3)
 
         # Convert Kd from sRGB to linear RGB
         mat['kd'] = texture.srgb_to_rgb(mat['kd'])
 
-        if clear_ks:
+        if clear_ks: # True
             # Override ORM occlusion (red) channel by zeros. We hijack this channel
             for mip in mat['ks'].getMips():
                 mip[..., 0] = 0.0 
 
+    # materials -- 
+    # [Material(
+    #     (kd): Texture2D()
+    #     (ks): Texture2D()
+    # )]
+    # materials[0]['kd'].data.size() -- [1, 2048, 2048, 3]
+    # materials[0]['ks'].data.size() -- [1, 1, 1, 3]
     return materials
 
 @torch.no_grad()

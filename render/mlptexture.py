@@ -47,7 +47,7 @@ class _MLP(torch.nn.Module):
 class MLPTexture3D(torch.nn.Module):
     def __init__(self, AABB, channels = 3, internal_dims = 32, hidden = 2, min_max = None):
         super(MLPTexture3D, self).__init__()
-
+        # ===> Here !!!
         self.channels = channels
         self.internal_dims = internal_dims
         self.AABB = AABB

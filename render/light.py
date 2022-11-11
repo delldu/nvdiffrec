@@ -14,6 +14,7 @@ import nvdiffrast.torch as dr
 
 from . import util
 from . import renderutils as ru
+import pdb
 
 ######################################################################################
 # Utility functions
@@ -54,6 +55,7 @@ class EnvironmentLight(torch.nn.Module):
         self.mtx = None      
         self.base = torch.nn.Parameter(base.clone().detach(), requires_grad=True)
         self.register_parameter('env_base', self.base)
+        # self.base.size() -- [6, 512, 512, 3]
 
     def xfm(self, mtx):
         self.mtx = mtx
@@ -131,12 +133,14 @@ class EnvironmentLight(torch.nn.Module):
 
 # Load from latlong .HDR file
 def _load_env_hdr(fn, scale=1.0):
+    # fn = 'data/irrmaps/aerodynamics_workshop_2k.hdr'
+    # scale = 2.0
     latlong_img = torch.tensor(util.load_image(fn), dtype=torch.float32, device='cuda')*scale
     cubemap = util.latlong_to_cubemap(latlong_img, [512, 512])
 
     l = EnvironmentLight(cubemap)
     l.build_mips()
-
+    # l.env_base.size() -- [6, 512, 512, 3]
     return l
 
 def load_env(fn, scale=1.0):

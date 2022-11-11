@@ -12,6 +12,7 @@ import torch
 
 from render import mesh
 from render import render
+import pdb
 
 ###############################################################################
 # Marching tetrahedrons implementation (differentiable), adapted from
@@ -37,10 +38,10 @@ class DMTet:
                 [ 3,  0,  4, -1, -1, -1],
                 [ 2,  0,  1, -1, -1, -1],
                 [-1, -1, -1, -1, -1, -1]
-                ], dtype=torch.long, device='cuda')
+                ], dtype=torch.long, device='cuda') # [16, 6]
 
-        self.num_triangles_table = torch.tensor([0,1,1,2,1,2,2,1,1,2,2,1,2,1,1,0], dtype=torch.long, device='cuda')
-        self.base_tet_edges = torch.tensor([0,1,0,2,0,3,1,2,1,3,2,3], dtype=torch.long, device='cuda')
+        self.num_triangles_table = torch.tensor([0,1,1,2,1,2,2,1,1,2,2,1,2,1,1,0], dtype=torch.long, device='cuda') # 16
+        self.base_tet_edges = torch.tensor([0,1,0,2,0,3,1,2,1,3,2,3], dtype=torch.long, device='cuda') # 12
 
     ###############################################################################
     # Utility functions

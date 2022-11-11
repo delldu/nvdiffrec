@@ -15,15 +15,18 @@ import torch.utils.cpp_extension
 
 from .bsdf import *
 from .loss import *
+import pdb
 
 #----------------------------------------------------------------------------
 # C++/Cuda plugin compiler/loader.
 
 _cached_plugin = None
 def _get_plugin():
+    # ==> Here !!!
+
     # Return cached plugin if already loaded.
     global _cached_plugin
-    if _cached_plugin is not None:
+    if _cached_plugin is not None: # False
         return _cached_plugin
 
     # Make sure we can find the necessary compiler and libary binaries.
@@ -253,6 +256,7 @@ def lambert(nrm, wi, use_python=False):
     Returns:
         Shaded diffuse value with shape [minibatch_size, height, width, 1]
     '''
+    pdb.set_trace()
 
     if use_python:
         out = bsdf_lambert(nrm, wi)
@@ -289,6 +293,7 @@ def frostbite_diffuse(nrm, wi, wo, linearRoughness, use_python=False):
     Returns:
         Shaded diffuse value with shape [minibatch_size, height, width, 1]
     '''
+    pdb.set_trace()
 
     if use_python:
         out = bsdf_frostbite(nrm, wi, wo, linearRoughness)
@@ -328,7 +333,7 @@ def pbr_specular(col, nrm, wo, wi, alpha, min_roughness=0.08, use_python=False):
     Returns:
         Shaded specular color
     '''
-
+    pdb.set_trace()
     if use_python:
         out = bsdf_pbr_specular(col, nrm, wo, wi, alpha, min_roughness=min_roughness)
     else:
@@ -376,6 +381,7 @@ def pbr_bsdf(kd, arm, pos, nrm, view_pos, light_pos, min_roughness=0.08, bsdf="l
     if bsdf == 'frostbite':
         BSDF = 1
 
+    pdb.set_trace()
     if use_python:
         out = bsdf_pbr(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF)
     else:
@@ -487,7 +493,7 @@ def image_loss(img, target, loss='l1', tonemapper='none', use_python=False):
     Returns:
         Image space loss (scalar value).
     '''
-    if use_python:
+    if use_python: # False
         out = image_loss_fn(img, target, loss, tonemapper)
     else:
         out = _image_loss_func.apply(img, target, loss, tonemapper)
@@ -520,13 +526,13 @@ def xfm_points(points, matrix, use_python=False):
         use_python: Use PyTorch's torch.matmul (for validation)
     Returns:
         Transformed points in homogeneous 4D with shape [minibatch_size, num_vertices, 4].
-    '''    
-    if use_python:
+    '''
+    if use_python: # False
         out = torch.matmul(torch.nn.functional.pad(points, pad=(0,1), mode='constant', value=1.0), torch.transpose(matrix, 1, 2))
     else:
         out = _xfm_func.apply(points, matrix, True)
 
-    if torch.is_anomaly_enabled():
+    if torch.is_anomaly_enabled(): # False
         assert torch.all(torch.isfinite(out)), "Output of xfm_points contains inf or NaN"
     return out
 
@@ -540,7 +546,7 @@ def xfm_vectors(vectors, matrix, use_python=False):
     Returns:
         Transformed vectors in homogeneous 4D with shape [minibatch_size, num_vertices, 4].
     '''    
-
+    pdb.set_trace()
     if use_python:
         out = torch.matmul(torch.nn.functional.pad(vectors, pad=(0,1), mode='constant', value=0.0), torch.transpose(matrix, 1, 2))[..., 0:3].contiguous()
     else:

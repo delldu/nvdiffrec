@@ -12,6 +12,7 @@ import torch
 from render import mesh
 from render import render
 from render import regularizer
+import pdb
 
 ###############################################################################
 #  Geometry interface
@@ -20,16 +21,14 @@ from render import regularizer
 class DLMesh(torch.nn.Module):
     def __init__(self, initial_guess, FLAGS):
         super(DLMesh, self).__init__()
-
         self.FLAGS = FLAGS
-
         self.initial_guess = initial_guess
         self.mesh          = initial_guess.clone()
         print("Base mesh has %d triangles and %d vertices." % (self.mesh.t_pos_idx.shape[0], self.mesh.v_pos.shape[0]))
         
         self.mesh.v_pos = torch.nn.Parameter(self.mesh.v_pos, requires_grad=True)
         self.register_parameter('vertex_pos', self.mesh.v_pos)
-
+        
     @torch.no_grad()
     def getAABB(self):
         return mesh.aabb(self.mesh)
@@ -67,7 +66,8 @@ class DLMesh(torch.nn.Module):
 
         reg_loss = torch.tensor([0], dtype=torch.float32, device="cuda")
 
-        # Compute regularizer. 
+        # Compute regularizer.
+        # self.FLAGS.laplace -- 'relative' 
         if self.FLAGS.laplace == "absolute":
             reg_loss += regularizer.laplace_regularizer_const(self.mesh.v_pos, self.mesh.t_pos_idx) * self.FLAGS.laplace_scale * (1 - t_iter)
         elif self.FLAGS.laplace == "relative":

@@ -14,6 +14,8 @@ from . import util
 from . import renderutils as ru
 from . import light
 
+import pdb
+
 # ==============================================================================================
 #  Helper functions
 # ==============================================================================================
@@ -40,7 +42,7 @@ def shade(
     # Texture lookups
     ################################################################################
     perturbed_nrm = None
-    if 'kd_ks_normal' in material:
+    if 'kd_ks_normal' in material: # False
         # Combined texture, used for MLPs because lookups are expensive
         all_tex_jitter = material['kd_ks_normal'].sample(gb_pos + torch.normal(mean=0, std=0.01, size=gb_pos.shape, device="cuda"))
         all_tex = material['kd_ks_normal'].sample(gb_pos)
@@ -57,13 +59,13 @@ def shade(
         kd_grad    = torch.sum(torch.abs(kd_jitter[..., 0:3] - kd[..., 0:3]), dim=-1, keepdim=True) / 3
 
     # Separate kd into alpha and color, default alpha = 1
-    alpha = kd[..., 3:4] if kd.shape[-1] == 4 else torch.ones_like(kd[..., 0:1]) 
-    kd = kd[..., 0:3]
+    alpha = kd[..., 3:4] if kd.shape[-1] == 4 else torch.ones_like(kd[..., 0:1]) # [1, 512, 512, 1]
+    kd = kd[..., 0:3] # [1, 512, 512, 3]
 
     ################################################################################
     # Normal perturbation & normal bend
     ################################################################################
-    if 'no_perturbed_nrm' in material and material['no_perturbed_nrm']:
+    if 'no_perturbed_nrm' in material and material['no_perturbed_nrm']: # False
         perturbed_nrm = None
 
     gb_normal = ru.prepare_shading_normal(gb_pos, view_pos, perturbed_nrm, gb_normal, gb_tangent, gb_geometric_normal, two_sided_shading=True, opengl=True)
@@ -74,12 +76,13 @@ def shade(
 
     assert 'bsdf' in material or bsdf is not None, "Material must specify a BSDF type"
     bsdf = material['bsdf'] if bsdf is None else bsdf
-    if bsdf == 'pbr':
+    # bsdf -- 'pbr'
+    if bsdf == 'pbr': # True
         if isinstance(lgt, light.EnvironmentLight):
             shaded_col = lgt.shade(gb_pos, gb_normal, kd, ks, view_pos, specular=True)
         else:
             assert False, "Invalid light type"
-    elif bsdf == 'diffuse':
+    elif bsdf == 'diffuse': # False
         if isinstance(lgt, light.EnvironmentLight):
             shaded_col = lgt.shade(gb_pos, gb_normal, kd, ks, view_pos, specular=False)
         else:
@@ -97,10 +100,11 @@ def shade(
     
     # Return multiple buffers
     buffers = {
-        'shaded'    : torch.cat((shaded_col, alpha), dim=-1),
-        'kd_grad'   : torch.cat((kd_grad, alpha), dim=-1),
-        'occlusion' : torch.cat((ks[..., :1], alpha), dim=-1)
+        'shaded'    : torch.cat((shaded_col, alpha), dim=-1), # [1, 512, 512, 4]
+        'kd_grad'   : torch.cat((kd_grad, alpha), dim=-1), # [1, 512, 512, 2]
+        'occlusion' : torch.cat((ks[..., :1], alpha), dim=-1) # [1, 512, 512, 2]
     }
+
     return buffers
 
 # ==============================================================================================
@@ -197,6 +201,17 @@ def render_mesh(
         background  = None, 
         bsdf        = None
     ):
+    # ctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7f88cfa59940>
+    # mesh = <render.mesh.Mesh object at 0x7f88cf9e9be0>
+    # mtx_in = tensor([[[-1.6353,  1.0194,  1.4543, -0.5719],
+    #          [ 1.7332,  1.3474,  1.0045, -0.2639],
+    #          [-0.1605,  0.7144, -0.6813,  2.8980],
+    #          [-0.1605,  0.7143, -0.6812,  3.0974]]], device='cuda:0')
+    # view_pos = tensor([[[[ 0.4151, -2.0515,  2.2981]]]], device='cuda:0')
+    # lgt = EnvironmentLight()
+    # resolution = [512, 512]
+    # msaa = True
+    # background.size() -- [1, 512, 512, 4]
 
     def prepare_input_vector(x):
         x = torch.tensor(x, dtype=torch.float32, device='cuda') if not torch.is_tensor(x) else x
@@ -255,21 +270,43 @@ def render_mesh(
 #  Render UVs
 # ==============================================================================================
 def render_uv(ctx, mesh, resolution, mlp_texture):
+    # ctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7f7b62bfea60>
+    # mesh = <render.mesh.Mesh object at 0x7f7b480270d0>
+    # resolution = [1024, 1024]
+    # mlp_texture = MLPTexture3D(
+    #   (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
+    #   (net): _MLP(
+    #     (net): Sequential(
+    #       (0): Linear(in_features=32, out_features=32, bias=False)
+    #       (1): ReLU()
+    #       (2): Linear(in_features=32, out_features=32, bias=False)
+    #       (3): ReLU()
+    #       (4): Linear(in_features=32, out_features=9, bias=False)
+    #     )
+    #   )
+    # )
 
     # clip space transform 
     uv_clip = mesh.v_tex[None, ...]*2.0 - 1.0
+    # uv_clip.size() -- [1, 7038, 2]
 
     # pad to four component coordinate
     uv_clip4 = torch.cat((uv_clip, torch.zeros_like(uv_clip[...,0:1]), torch.ones_like(uv_clip[...,0:1])), dim = -1)
+    # uv_clip4.size() -- [1, 7038, 4]
 
     # rasterize
     rast, _ = dr.rasterize(ctx, uv_clip4, mesh.t_tex_idx.int(), resolution)
 
     # Interpolate world space position
     gb_pos, _ = interpolate(mesh.v_pos[None, ...], rast, mesh.t_pos_idx.int())
+    # gb_pos.size() -- [1, 1024, 1024, 3]
 
     # Sample out textures from MLP
     all_tex = mlp_texture.sample(gb_pos)
     assert all_tex.shape[-1] == 9 or all_tex.shape[-1] == 10, "Combined kd_ks_normal must be 9 or 10 channels"
     perturbed_nrm = all_tex[..., -3:]
+
+    # rast.size() -- [1, 1024, 1024, 4]
+    # all_tex.size() -- [1, 1024, 1024, 9]
+    # perturbed_nrm.size() -- [1, 1024, 1024, 3]
     return (rast[..., -1:] > 0).float(), all_tex[..., :-6], all_tex[..., -6:-3], util.safe_normalize(perturbed_nrm)

@@ -13,6 +13,7 @@ import torch
 import nvdiffrast.torch as dr
 
 from . import util
+import pdb
 
 ######################################################################################
 # Smooth pooling / mip computation with linear gradient upscaling
@@ -45,6 +46,8 @@ class Texture2D(torch.nn.Module):
      # Input can be constant value (1D array) or texture (3D array) or mip hierarchy (list of 3d arrays)
     def __init__(self, init, min_max=None):
         super(Texture2D, self).__init__()
+        # init = tensor([0.5000, 0.5000, 0.5000], device='cuda:0')
+        # min_max = None
 
         if isinstance(init, np.ndarray):
             init = torch.tensor(init, dtype=torch.float32, device='cuda')
@@ -57,8 +60,9 @@ class Texture2D(torch.nn.Module):
             self.data = torch.nn.Parameter(init.clone().detach(), requires_grad=True)
         elif len(init.shape) == 3:
             self.data = torch.nn.Parameter(init[None, ...].clone().detach(), requires_grad=True)
-        elif len(init.shape) == 1:
+        elif len(init.shape) == 1: # True
             self.data = torch.nn.Parameter(init[None, None, None, :].clone().detach(), requires_grad=True) # Convert constant to 1x1 tensor
+            # self.data.size() -- [1, 1, 1, 3]
         else:
             assert False, "Invalid texture object"
 
@@ -66,16 +70,16 @@ class Texture2D(torch.nn.Module):
 
     # Filtered (trilinear) sample texture at a given location
     def sample(self, texc, texc_deriv, filter_mode='linear-mipmap-linear'):
-        if isinstance(self.data, list):
+        if isinstance(self.data, list): # False
             out = dr.texture(self.data[0], texc, texc_deriv, mip=self.data[1:], filter_mode=filter_mode)
         else:
-            if self.data.shape[1] > 1 and self.data.shape[2] > 1:
+            if self.data.shape[1] > 1 and self.data.shape[2] > 1: # False
                 mips = [self.data]
                 while mips[-1].shape[1] > 1 and mips[-1].shape[2] > 1:
                     mips += [texture2d_mip.apply(mips[-1])]
                 out = dr.texture(mips[0], texc, texc_deriv, mip=mips[1:], filter_mode=filter_mode)
             else:
-                out = dr.texture(self.data, texc, texc_deriv, filter_mode=filter_mode)
+                out = dr.texture(self.data, texc, texc_deriv, filter_mode=filter_mode) # === !!!
         return out
 
     def getRes(self):
@@ -127,6 +131,7 @@ def create_trainable(init, res=None, auto_mipmaps=True, min_max=None):
         if res is not None:
             init = util.scale_img_nhwc(init, res)
 
+        pdb.set_trace()
         # Genreate custom mipchain
         if not auto_mipmaps:
             mip_chain = [init.clone().detach().requires_grad_(True)]

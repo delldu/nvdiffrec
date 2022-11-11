@@ -9,6 +9,7 @@
 
 import math
 import torch
+import pdb
 
 NORMAL_THRESHOLD = 0.1
 
@@ -115,6 +116,7 @@ def bsdf_masking_smith_ggx_correlated(alphaSqr, cosThetaI, cosThetaO):
     return 1 / (1 + lambdaI + lambdaO)
 
 def bsdf_pbr_specular(col, nrm, wo, wi, alpha, min_roughness=0.08):
+    pdb.set_trace()
     _alpha = torch.clamp(alpha, min=min_roughness*min_roughness, max=1.0)
     alphaSqr = _alpha * _alpha
 
@@ -134,6 +136,7 @@ def bsdf_pbr_specular(col, nrm, wo, wi, alpha, min_roughness=0.08):
     return torch.where(frontfacing, w, torch.zeros_like(w))
 
 def bsdf_pbr(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF):
+    pdb.set_trace()
     wo = _safe_normalize(view_pos - pos)
     wi = _safe_normalize(light_pos - pos)
 

@@ -13,6 +13,7 @@ import torch
 from . import texture
 from . import mesh
 from . import material
+import pdb
 
 ######################################################################################
 # Utility functions
@@ -27,8 +28,10 @@ def _find_mat(materials, name):
 ######################################################################################
 # Create mesh object from objfile
 ######################################################################################
-
 def load_obj(filename, clear_ks=True, mtl_override=None):
+    # filename = 'data/bob/bob_tri.obj'
+    # clear_ks = True
+    # mtl_override = None
     obj_path = os.path.dirname(filename)
 
     # Read entire file
@@ -44,7 +47,8 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
             'ks'   : texture.Texture2D(torch.tensor([0.0, 0.0, 0.0], dtype=torch.float32, device='cuda'))
         }
     ]
-    if mtl_override is None: 
+    # all_materials -- [{'name': '_default_mat', 'bsdf': 'pbr', 'kd': Texture2D(), 'ks': Texture2D()}]
+    if mtl_override is None: # True
         for line in lines:
             if len(line.split()) == 0:
                 continue
@@ -105,18 +109,18 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
     assert len(tfaces) == len(faces) and len(nfaces) == len (faces)
 
     # Create an "uber" material by combining all textures into a larger texture
-    if len(used_materials) > 1:
+    if len(used_materials) > 1: # len(used_materials) == 1 ==> False
         uber_material, texcoords, tfaces = material.merge_materials(used_materials, texcoords, tfaces, mfaces)
     else:
         uber_material = used_materials[0]
 
-    vertices = torch.tensor(vertices, dtype=torch.float32, device='cuda')
-    texcoords = torch.tensor(texcoords, dtype=torch.float32, device='cuda') if len(texcoords) > 0 else None
-    normals = torch.tensor(normals, dtype=torch.float32, device='cuda') if len(normals) > 0 else None
+    vertices = torch.tensor(vertices, dtype=torch.float32, device='cuda') # [5344, 3]
+    texcoords = torch.tensor(texcoords, dtype=torch.float32, device='cuda') if len(texcoords) > 0 else None # ([5647, 2]
+    normals = torch.tensor(normals, dtype=torch.float32, device='cuda') if len(normals) > 0 else None # [5344, 3]
     
-    faces = torch.tensor(faces, dtype=torch.int64, device='cuda')
-    tfaces = torch.tensor(tfaces, dtype=torch.int64, device='cuda') if texcoords is not None else None
-    nfaces = torch.tensor(nfaces, dtype=torch.int64, device='cuda') if normals is not None else None
+    faces = torch.tensor(faces, dtype=torch.int64, device='cuda') # [10688, 3]
+    tfaces = torch.tensor(tfaces, dtype=torch.int64, device='cuda') if texcoords is not None else None # [10688, 3]
+    nfaces = torch.tensor(nfaces, dtype=torch.int64, device='cuda') if normals is not None else None # [10688, 3]
 
     return mesh.Mesh(vertices, faces, normals, nfaces, texcoords, tfaces, material=uber_material)
 

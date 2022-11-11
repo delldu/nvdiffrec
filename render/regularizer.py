@@ -13,6 +13,8 @@ import nvdiffrast.torch as dr
 from . import util
 from . import mesh
 
+import pdb
+
 ######################################################################################
 # Computes the image gradient, useful for kd/ks smoothness losses
 ######################################################################################

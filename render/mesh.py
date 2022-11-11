@@ -13,6 +13,7 @@ import torch
 
 from . import obj
 from . import util
+import pdb
 
 ######################################################################################
 # Base mesh class
@@ -29,9 +30,9 @@ class Mesh:
         self.t_tng_idx = t_tng_idx
         self.material = material
 
-        if base is not None:
+        if base is not None: # False
             self.copy_none(base)
-
+        
     def copy_none(self, other):
         if self.v_pos is None:
             self.v_pos = other.v_pos
