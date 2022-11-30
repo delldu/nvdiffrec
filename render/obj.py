@@ -39,6 +39,21 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
         lines = f.readlines()
 
     # Load materials
+    '''
+    Referring to Figure 5,
+    the diffuse lobe parameters kd are provided as a four-component texture,
+        where the optional fourth channel α represents transparency.
+    The specular lobe is described by a roughness value r, for the GGX normal distribution function 
+        and a metalness factor m, which interpolates between plastic and metallic appearance 
+        by computing a specular highlight color according to 
+            ks = (1 − m) · 0.04 + m · kd.
+    Following a standard convention, we store these values in a texture korm = (o, r, m),
+        where o is left unused. 
+    Finally, we include a tangent space normal map, n, to capture high frequency shading detail. 
+    We regularize material parameters using a smoothness loss [79], please refer to our supplemental
+        material for details.
+    '''
+
     all_materials = [
         {
             'name' : '_default_mat',

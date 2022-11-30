@@ -70,9 +70,15 @@ class Texture2D(torch.nn.Module):
 
     # Filtered (trilinear) sample texture at a given location
     def sample(self, texc, texc_deriv, filter_mode='linear-mipmap-linear'):
+        # self.data.size() -- [1, 2048, 2048, 3]
+        # texc.size() -- [1, 512, 512, 2]
+        # texc_deriv.size() -- [1, 512, 512, 4]
+        # filter_mode = 'linear-mipmap-linear'
+
         if isinstance(self.data, list): # False
             out = dr.texture(self.data[0], texc, texc_deriv, mip=self.data[1:], filter_mode=filter_mode)
         else:
+            # self.data.shape -- [1, 2048, 2048, 3]
             if self.data.shape[1] > 1 and self.data.shape[2] > 1: # False
                 mips = [self.data]
                 while mips[-1].shape[1] > 1 and mips[-1].shape[2] > 1:
@@ -83,13 +89,14 @@ class Texture2D(torch.nn.Module):
         return out
 
     def getRes(self):
-        return self.getMips()[0].shape[1:3]
+        return self.getMips()[0].shape[1:3] # [1, 2048, 2048, 3] --> [2048, 2048]
 
     def getChannels(self):
-        return self.getMips()[0].shape[3]
+        return self.getMips()[0].shape[3] # [1, 2048, 2048, 3] --> 3
 
     def getMips(self):
-        if isinstance(self.data, list):
+        # self.data.size() -- [1, 1, 1, 3] or [1, 2048, 2048, 3]
+        if isinstance(self.data, list): # False
             return self.data
         else:
             return [self.data]
@@ -103,7 +110,7 @@ class Texture2D(torch.nn.Module):
 
     # In-place clamp with no derivative to make sure values are in valid range after training
     def normalize_(self):
-        with torch.no_grad():
+        with torch.no_grad(): # !!! clamp with no derivative
             for mip in self.getMips():
                 mip = util.safe_normalize(mip)
 

@@ -57,8 +57,8 @@ class EnvironmentLight(torch.nn.Module):
         self.register_parameter('env_base', self.base)
         # self.base.size() -- [6, 512, 512, 3]
 
-    def xfm(self, mtx):
-        self.mtx = mtx
+    # def xfm(self, mtx):
+    #     self.mtx = mtx
 
     def clone(self):
         return EnvironmentLight(self.base.clone().detach())
@@ -67,16 +67,18 @@ class EnvironmentLight(torch.nn.Module):
         self.base.clamp_(min, max)
 
     def get_mip(self, roughness):
-        return torch.where(roughness < self.MAX_ROUGHNESS
+        # roughness.size() -- [1, 512, 512, 1]
+        x = torch.where(roughness < self.MAX_ROUGHNESS
                         , (torch.clamp(roughness, self.MIN_ROUGHNESS, self.MAX_ROUGHNESS) - self.MIN_ROUGHNESS) / (self.MAX_ROUGHNESS - self.MIN_ROUGHNESS) * (len(self.specular) - 2)
                         , (torch.clamp(roughness, self.MAX_ROUGHNESS, 1.0) - self.MAX_ROUGHNESS) / (1.0 - self.MAX_ROUGHNESS) + len(self.specular) - 2)
+        return x # [1, 512, 512, 1], data == 1.6190
         
     def build_mips(self, cutoff=0.99):
-        self.specular = [self.base]
+        self.specular = [self.base] # self.base.size() -- [6, 512, 512, 3]
         while self.specular[-1].shape[1] > self.LIGHT_MIN_RES:
             self.specular += [cubemap_mip.apply(self.specular[-1])]
 
-        self.diffuse = ru.diffuse_cubemap(self.specular[-1])
+        self.diffuse = ru.diffuse_cubemap(self.specular[-1]) # self.specular[-1].size() -- [6, 16, 16, 3]
 
         for idx in range(len(self.specular) - 1):
             roughness = (idx / (len(self.specular) - 2)) * (self.MAX_ROUGHNESS - self.MIN_ROUGHNESS) + self.MIN_ROUGHNESS
@@ -88,19 +90,25 @@ class EnvironmentLight(torch.nn.Module):
         return torch.mean(torch.abs(self.base - white))
 
     def shade(self, gb_pos, gb_normal, kd, ks, view_pos, specular=True):
+        # gb_pos.size() -- [1, 512, 512, 3], range [-1.0, 1.0]
+        # gb_normal.size() -- [1, 512, 512, 3], range [-1.0, 1.0]
+        # (Pdb) kd.size() -- [1, 512, 512, 3]
+        # (Pdb) ks.size() -- [1, 512, 512, 3]
+        # view_pos.size() -- [1, 1, 1, 3], data == [[[[ 1.2133, -1.9934, -1.6240]]]]
+
         wo = util.safe_normalize(view_pos - gb_pos)
 
-        if specular:
+        if specular: # True
             roughness = ks[..., 1:2] # y component
             metallic  = ks[..., 2:3] # z component
-            spec_col  = (1.0 - metallic)*0.04 + kd * metallic
+            spec_col  = (1.0 - metallic)*0.04 + kd * metallic # -- ks in paper ?
             diff_col  = kd * (1.0 - metallic)
         else:
             diff_col = kd
 
         reflvec = util.safe_normalize(util.reflect(wo, gb_normal))
         nrmvec = gb_normal
-        if self.mtx is not None: # Rotate lookup
+        if self.mtx is not None: # Rotate lookup -- False
             mtx = torch.as_tensor(self.mtx, dtype=torch.float32, device='cuda')
             reflvec = ru.xfm_vectors(reflvec.view(reflvec.shape[0], reflvec.shape[1] * reflvec.shape[2], reflvec.shape[3]), mtx).view(*reflvec.shape)
             nrmvec  = ru.xfm_vectors(nrmvec.view(nrmvec.shape[0], nrmvec.shape[1] * nrmvec.shape[2], nrmvec.shape[3]), mtx).view(*nrmvec.shape)
@@ -109,12 +117,13 @@ class EnvironmentLight(torch.nn.Module):
         diffuse = dr.texture(self.diffuse[None, ...], nrmvec.contiguous(), filter_mode='linear', boundary_mode='cube')
         shaded_col = diffuse * diff_col
 
-        if specular:
+        if specular: # True
             # Lookup FG term from lookup texture
             NdotV = torch.clamp(util.dot(wo, gb_normal), min=1e-4)
             fg_uv = torch.cat((NdotV, roughness), dim=-1)
-            if not hasattr(self, '_FG_LUT'):
+            if not hasattr(self, '_FG_LUT'): # True
                 self._FG_LUT = torch.as_tensor(np.fromfile('data/irrmaps/bsdf_256_256.bin', dtype=np.float32).reshape(1, 256, 256, 2), dtype=torch.float32, device='cuda')
+            # self._FG_LUT.size() -- [1, 256, 256, 2]
             fg_lookup = dr.texture(self._FG_LUT, fg_uv, filter_mode='linear', boundary_mode='clamp')
 
             # Roughness adjusted specular env lookup
@@ -137,7 +146,8 @@ def _load_env_hdr(fn, scale=1.0):
     # scale = 2.0
     latlong_img = torch.tensor(util.load_image(fn), dtype=torch.float32, device='cuda')*scale
     cubemap = util.latlong_to_cubemap(latlong_img, [512, 512])
-
+    # latlong_img.size() -- [1024, 2048, 3]
+    # cubemap.size() -- [6, 512, 512, 3]
     l = EnvironmentLight(cubemap)
     l.build_mips()
     # l.env_base.size() -- [6, 512, 512, 3]
@@ -150,8 +160,9 @@ def load_env(fn, scale=1.0):
         assert False, "Unknown envlight extension %s" % os.path.splitext(fn)[1]
 
 def save_env_map(fn, light):
+    # fn -- 'out/bob/dmtet_mesh/probe.hdr'
     assert isinstance(light, EnvironmentLight), "Can only save EnvironmentLight currently"
-    if isinstance(light, EnvironmentLight):
+    if isinstance(light, EnvironmentLight): # True
         color = util.cubemap_to_latlong(light.base, [512, 1024])
     util.save_image_raw(fn, color.detach().cpu().numpy())
 
@@ -160,6 +171,10 @@ def save_env_map(fn, light):
 ######################################################################################
 
 def create_trainable_env_rnd(base_res, scale=0.5, bias=0.25):
+    # base_res = 512
+    # scale = 0.0
+    # bias = 0.5
     base = torch.rand(6, base_res, base_res, 3, dtype=torch.float32, device='cuda') * scale + bias
+    # base.size() -- [6, 512, 512, 3]
     return EnvironmentLight(base)
       

@@ -9,7 +9,7 @@
 
 import numpy as np
 import torch
-
+import torch.nn.functional as F
 from render import mesh
 from render import render
 import pdb
@@ -48,6 +48,7 @@ class DMTet:
     ###############################################################################
 
     def sort_edges(self, edges_ex2):
+        # edges_ex2.size() -- [398826, 2]
         with torch.no_grad():
             order = (edges_ex2[:,0] > edges_ex2[:,1]).long()
             order = order.unsqueeze(dim=1)
@@ -58,7 +59,10 @@ class DMTet:
         return torch.stack([a, b],-1)
 
     def map_uv(self, faces, face_gidx, max_idx):
-        N = int(np.ceil(np.sqrt((max_idx+1)//2)))
+        # faces.size() -- [75920, 3]
+        # face_gidx.size() -- [75920]
+        # max_idx -- 384984
+        N = int(np.ceil(np.sqrt((max_idx+1)//2))) # 439
         # tex_y, tex_x = torch.meshgrid(
         #     torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
         #     torch.linspace(0, 1 - (1 / N), N, dtype=torch.float32, device="cuda"),
@@ -96,6 +100,10 @@ class DMTet:
     ###############################################################################
 
     def __call__(self, pos_nx3, sdf_n, tet_fx4):
+        # ==> pdb.set_trace()
+        # pos_nx3.size() -- [36562, 3]
+        # sdf_n.size() -- [36562]
+        # tet_fx4.size() -- [192492, 4]
         with torch.no_grad():
             occ_n = sdf_n > 0
             occ_fx4 = occ_n[tet_fx4.reshape(-1)].reshape(-1,4)
@@ -156,8 +164,8 @@ def sdf_reg_loss(sdf, all_edges):
     sdf_f1x6x2 = sdf[all_edges.reshape(-1)].reshape(-1,2)
     mask = torch.sign(sdf_f1x6x2[...,0]) != torch.sign(sdf_f1x6x2[...,1])
     sdf_f1x6x2 = sdf_f1x6x2[mask]
-    sdf_diff = torch.nn.functional.binary_cross_entropy_with_logits(sdf_f1x6x2[...,0], (sdf_f1x6x2[...,1] > 0).float()) + \
-            torch.nn.functional.binary_cross_entropy_with_logits(sdf_f1x6x2[...,1], (sdf_f1x6x2[...,0] > 0).float())
+    sdf_diff = F.binary_cross_entropy_with_logits(sdf_f1x6x2[...,0], (sdf_f1x6x2[...,1] > 0).float()) + \
+            F.binary_cross_entropy_with_logits(sdf_f1x6x2[...,1], (sdf_f1x6x2[...,0] > 0).float())
     return sdf_diff
 
 ###############################################################################
@@ -167,23 +175,24 @@ def sdf_reg_loss(sdf, all_edges):
 class DMTetGeometry(torch.nn.Module):
     def __init__(self, grid_res, scale, FLAGS):
         super(DMTetGeometry, self).__init__()
+        # grid_res = 64
+        # scale = 2.1
 
         self.FLAGS         = FLAGS
         self.grid_res      = grid_res
         self.marching_tets = DMTet()
 
-        tets = np.load('data/tets/{}_tets.npz'.format(self.grid_res))
-        self.verts    = torch.tensor(tets['vertices'], dtype=torch.float32, device='cuda') * scale
-        self.indices  = torch.tensor(tets['indices'], dtype=torch.long, device='cuda')
+        tets = np.load('data/tets/{}_tets.npz'.format(self.grid_res)) # 'data/tets/64_tets.npz'
+        self.verts    = torch.tensor(tets['vertices'], dtype=torch.float32, device='cuda') * scale # [36562, 3]
+        self.indices  = torch.tensor(tets['indices'], dtype=torch.long, device='cuda') # [192492, 4]
         self.generate_edges()
 
         # Random init
-        sdf = torch.rand_like(self.verts[:,0]) - 0.1
-
-        self.sdf    = torch.nn.Parameter(sdf.clone().detach(), requires_grad=True)
+        sdf = torch.rand_like(self.verts[:,0]) - 0.1 #  self.verts[:,0].shape -- [36562]
+        self.sdf = torch.nn.Parameter(sdf.clone().detach(), requires_grad=True) # self.sdf.shape -- [36562]
         self.register_parameter('sdf', self.sdf)
 
-        self.deform = torch.nn.Parameter(torch.zeros_like(self.verts), requires_grad=True)
+        self.deform = torch.nn.Parameter(torch.zeros_like(self.verts), requires_grad=True) # self.deform.shape -- [36562, 3]
         self.register_parameter('deform', self.deform)
 
     def generate_edges(self):
@@ -191,10 +200,12 @@ class DMTetGeometry(torch.nn.Module):
             edges = torch.tensor([0,1,0,2,0,3,1,2,1,3,2,3], dtype = torch.long, device = "cuda")
             all_edges = self.indices[:,edges].reshape(-1,2)
             all_edges_sorted = torch.sort(all_edges, dim=1)[0]
-            self.all_edges = torch.unique(all_edges_sorted, dim=0)
+            self.all_edges = torch.unique(all_edges_sorted, dim=0) # [235101, 2]
 
     @torch.no_grad()
     def getAABB(self):
+        # tensor([-1.0500, -1.0500, -1.0500], device='cuda:0'), 
+        # tensor([1.0500, 1.0500, 1.0500], device='cuda:0')
         return torch.min(self.verts, dim=0).values, torch.max(self.verts, dim=0).values
 
     def getMesh(self, material):
@@ -216,7 +227,6 @@ class DMTetGeometry(torch.nn.Module):
 
 
     def tick(self, glctx, target, lgt, opt_material, loss_fn, iteration):
-
         # ==============================================================================================
         #  Render optimizable object with identical conditions
         # ==============================================================================================
@@ -229,8 +239,8 @@ class DMTetGeometry(torch.nn.Module):
 
         # Image-space loss, split into a coverage component and a color component
         color_ref = target['img']
-        img_loss = torch.nn.functional.mse_loss(buffers['shaded'][..., 3:], color_ref[..., 3:]) 
-        img_loss = img_loss + loss_fn(buffers['shaded'][..., 0:3] * color_ref[..., 3:], color_ref[..., 0:3] * color_ref[..., 3:])
+        img_loss = F.mse_loss(buffers['shaded'][..., 3:], color_ref[..., 3:]) 
+        img_loss += loss_fn(buffers['shaded'][..., 0:3] * color_ref[..., 3:], color_ref[..., 0:3] * color_ref[..., 3:])
 
         # SDF regularizer
         sdf_weight = self.FLAGS.sdf_regularizer - (self.FLAGS.sdf_regularizer - 0.01)*min(1.0, 4.0 * t_iter)
@@ -243,7 +253,7 @@ class DMTetGeometry(torch.nn.Module):
         reg_loss += torch.mean(buffers['occlusion'][..., :-1] * buffers['occlusion'][..., -1:]) * 0.001 * min(1.0, iteration / 500)
 
         # Light white balance regularizer
-        reg_loss = reg_loss + lgt.regularizer() * 0.005
+        reg_loss += lgt.regularizer() * 0.005
 
         return img_loss, reg_loss
 

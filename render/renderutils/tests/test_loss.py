@@ -32,30 +32,30 @@ def relative_loss(name, ref, cuda):
 	cuda = cuda.float()
 	print(name, torch.max(torch.abs(ref - cuda) / torch.abs(ref + 1e-7)).item())
 
-def test_loss(loss, tonemapper):
-	img_cuda = torch.rand(1, RES, RES, 3, dtype=DTYPE, device='cuda', requires_grad=True)
-	img_ref = img_cuda.clone().detach().requires_grad_(True)
-	target_cuda = torch.rand(1, RES, RES, 3, dtype=DTYPE, device='cuda', requires_grad=True)
-	target_ref = target_cuda.clone().detach().requires_grad_(True)
+# def test_loss(loss, tonemapper):
+# 	img_cuda = torch.rand(1, RES, RES, 3, dtype=DTYPE, device='cuda', requires_grad=True)
+# 	img_ref = img_cuda.clone().detach().requires_grad_(True)
+# 	target_cuda = torch.rand(1, RES, RES, 3, dtype=DTYPE, device='cuda', requires_grad=True)
+# 	target_ref = target_cuda.clone().detach().requires_grad_(True)
 
-	ref_loss = ru.image_loss(img_ref, target_ref, loss=loss, tonemapper=tonemapper, use_python=True)
-	ref_loss.backward()
+# 	ref_loss = ru.image_loss(img_ref, target_ref, loss=loss, tonemapper=tonemapper, use_python=True)
+# 	ref_loss.backward()
 
-	cuda_loss = ru.image_loss(img_cuda, target_cuda, loss=loss, tonemapper=tonemapper)
-	cuda_loss.backward()
+# 	cuda_loss = ru.image_loss(img_cuda, target_cuda, loss=loss, tonemapper=tonemapper)
+# 	cuda_loss.backward()
 
-	print("-------------------------------------------------------------")
-	print("    Loss: %s, %s" % (loss, tonemapper))
-	print("-------------------------------------------------------------")
+# 	print("-------------------------------------------------------------")
+# 	print("    Loss: %s, %s" % (loss, tonemapper))
+# 	print("-------------------------------------------------------------")
 
-	relative_loss("res:", ref_loss, cuda_loss)
-	relative_loss("img:", img_ref.grad, img_cuda.grad)
-	relative_loss("target:", target_ref.grad, target_cuda.grad)
+# 	relative_loss("res:", ref_loss, cuda_loss)
+# 	relative_loss("img:", img_ref.grad, img_cuda.grad)
+# 	relative_loss("target:", target_ref.grad, target_cuda.grad)
 
 
-test_loss('l1', 'none')
-test_loss('l1', 'log_srgb')
-test_loss('mse', 'log_srgb')
-test_loss('smape', 'none')
-test_loss('relmse', 'none')
-test_loss('mse', 'none')
+# test_loss('l1', 'none')
+# test_loss('l1', 'log_srgb')
+# test_loss('mse', 'log_srgb')
+# test_loss('smape', 'none')
+# test_loss('relmse', 'none')
+# test_loss('mse', 'none')

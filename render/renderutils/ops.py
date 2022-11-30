@@ -89,94 +89,118 @@ def _get_plugin():
 #----------------------------------------------------------------------------
 # Internal kernels, just used for testing functionality
 
-class _fresnel_shlick_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, f0, f90, cosTheta):
-        out = _get_plugin().fresnel_shlick_fwd(f0, f90, cosTheta, False)
-        ctx.save_for_backward(f0, f90, cosTheta)
-        return out
+# class _fresnel_shlick_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, f0, f90, cosTheta):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        f0, f90, cosTheta = ctx.saved_variables
-        return _get_plugin().fresnel_shlick_bwd(f0, f90, cosTheta, dout) + (None,)
+#         out = _get_plugin().fresnel_shlick_fwd(f0, f90, cosTheta, False)
+#         ctx.save_for_backward(f0, f90, cosTheta)
+#         return out
 
-def _fresnel_shlick(f0, f90, cosTheta, use_python=False):
-    if use_python:
-        out = bsdf_fresnel_shlick(f0, f90, cosTheta)
-    else:
-        out = _fresnel_shlick_func.apply(f0, f90, cosTheta)
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of _fresnel_shlick contains inf or NaN"
-    return out
+#         f0, f90, cosTheta = ctx.saved_variables
+#         return _get_plugin().fresnel_shlick_bwd(f0, f90, cosTheta, dout) + (None,)
+
+# def _fresnel_shlick(f0, f90, cosTheta, use_python=False):
+#     pdb.set_trace()
+
+#     if use_python:
+#         out = bsdf_fresnel_shlick(f0, f90, cosTheta)
+#     else:
+#         out = _fresnel_shlick_func.apply(f0, f90, cosTheta)
+
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of _fresnel_shlick contains inf or NaN"
+#     return out
 
 
-class _ndf_ggx_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, alphaSqr, cosTheta):
-        out = _get_plugin().ndf_ggx_fwd(alphaSqr, cosTheta, False)
-        ctx.save_for_backward(alphaSqr, cosTheta)
-        return out
+# class _ndf_ggx_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, alphaSqr, cosTheta):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        alphaSqr, cosTheta = ctx.saved_variables
-        return _get_plugin().ndf_ggx_bwd(alphaSqr, cosTheta, dout) + (None,)
+#         out = _get_plugin().ndf_ggx_fwd(alphaSqr, cosTheta, False)
+#         ctx.save_for_backward(alphaSqr, cosTheta)
+#         return out
 
-def _ndf_ggx(alphaSqr, cosTheta, use_python=False):
-    if use_python:
-        out = bsdf_ndf_ggx(alphaSqr, cosTheta)
-    else:
-        out = _ndf_ggx_func.apply(alphaSqr, cosTheta)
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of _ndf_ggx contains inf or NaN"
-    return out
+#         alphaSqr, cosTheta = ctx.saved_variables
+#         return _get_plugin().ndf_ggx_bwd(alphaSqr, cosTheta, dout) + (None,)
 
-class _lambda_ggx_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, alphaSqr, cosTheta):
-        out = _get_plugin().lambda_ggx_fwd(alphaSqr, cosTheta, False)
-        ctx.save_for_backward(alphaSqr, cosTheta)
-        return out
+# def _ndf_ggx(alphaSqr, cosTheta, use_python=False):
+#     pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        alphaSqr, cosTheta = ctx.saved_variables
-        return _get_plugin().lambda_ggx_bwd(alphaSqr, cosTheta, dout) + (None,)
+#     if use_python:
+#         out = bsdf_ndf_ggx(alphaSqr, cosTheta)
+#     else:
+#         out = _ndf_ggx_func.apply(alphaSqr, cosTheta)
 
-def _lambda_ggx(alphaSqr, cosTheta, use_python=False):
-    if use_python:
-        out = bsdf_lambda_ggx(alphaSqr, cosTheta)
-    else:
-        out = _lambda_ggx_func.apply(alphaSqr, cosTheta)
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of _ndf_ggx contains inf or NaN"
+#     return out
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of _lambda_ggx contains inf or NaN"
-    return out
+# class _lambda_ggx_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, alphaSqr, cosTheta):
+#         pdb.set_trace()
 
-class _masking_smith_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, alphaSqr, cosThetaI, cosThetaO):
-        ctx.save_for_backward(alphaSqr, cosThetaI, cosThetaO)
-        out = _get_plugin().masking_smith_fwd(alphaSqr, cosThetaI, cosThetaO, False)
-        return out
+#         out = _get_plugin().lambda_ggx_fwd(alphaSqr, cosTheta, False)
+#         ctx.save_for_backward(alphaSqr, cosTheta)
+#         return out
 
-    @staticmethod
-    def backward(ctx, dout):
-        alphaSqr, cosThetaI, cosThetaO = ctx.saved_variables
-        return _get_plugin().masking_smith_bwd(alphaSqr, cosThetaI, cosThetaO, dout) + (None,)
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-def _masking_smith(alphaSqr, cosThetaI, cosThetaO, use_python=False):
-    if use_python:
-        out = bsdf_masking_smith_ggx_correlated(alphaSqr, cosThetaI, cosThetaO)
-    else:
-        out = _masking_smith_func.apply(alphaSqr, cosThetaI, cosThetaO)
+#         alphaSqr, cosTheta = ctx.saved_variables
+#         return _get_plugin().lambda_ggx_bwd(alphaSqr, cosTheta, dout) + (None,)
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of _masking_smith contains inf or NaN"
-    return out
+# def _lambda_ggx(alphaSqr, cosTheta, use_python=False):
+#     pdb.set_trace()
+
+#     if use_python:
+#         out = bsdf_lambda_ggx(alphaSqr, cosTheta)
+#     else:
+#         out = _lambda_ggx_func.apply(alphaSqr, cosTheta)
+
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of _lambda_ggx contains inf or NaN"
+#     return out
+
+# class _masking_smith_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, alphaSqr, cosThetaI, cosThetaO):
+#         pdb.set_trace()
+
+#         ctx.save_for_backward(alphaSqr, cosThetaI, cosThetaO)
+#         out = _get_plugin().masking_smith_fwd(alphaSqr, cosThetaI, cosThetaO, False)
+#         return out
+
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
+
+#         alphaSqr, cosThetaI, cosThetaO = ctx.saved_variables
+#         return _get_plugin().masking_smith_bwd(alphaSqr, cosThetaI, cosThetaO, dout) + (None,)
+
+# def _masking_smith(alphaSqr, cosThetaI, cosThetaO, use_python=False):
+#     pdb.set_trace()
+
+#     if use_python:
+#         out = bsdf_masking_smith_ggx_correlated(alphaSqr, cosThetaI, cosThetaO)
+#     else:
+#         out = _masking_smith_func.apply(alphaSqr, cosThetaI, cosThetaO)
+
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of _masking_smith contains inf or NaN"
+#     return out
 
 #----------------------------------------------------------------------------
 # Shading normal setup (bump mapping + bent normals)
@@ -184,6 +208,9 @@ def _masking_smith(alphaSqr, cosThetaI, cosThetaO, use_python=False):
 class _prepare_shading_normal_func(torch.autograd.Function):
     @staticmethod
     def forward(ctx, pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl):
+        # ==> pdb.set_trace()
+        # two_sided_shading = True
+        # opengl = True
         ctx.two_sided_shading, ctx.opengl = two_sided_shading, opengl
         out = _get_plugin().prepare_shading_normal_fwd(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl, False)
         ctx.save_for_backward(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm)
@@ -191,6 +218,7 @@ class _prepare_shading_normal_func(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dout):
+        # ==> pdb.set_trace()
         pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm = ctx.saved_variables
         return _get_plugin().prepare_shading_normal_bwd(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, dout, ctx.two_sided_shading, ctx.opengl) + (None, None, None)
 
@@ -216,8 +244,7 @@ def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng,
     Returns:
         Final shading normal
     '''    
-
-    if perturbed_nrm is None:
+    if perturbed_nrm is None: # True
         perturbed_nrm = torch.tensor([0, 0, 1], dtype=torch.float32, device='cuda', requires_grad=False)[None, None, None, ...]
     
     if use_python:
@@ -225,200 +252,224 @@ def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng,
     else:
         out = _prepare_shading_normal_func.apply(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl)
     
-    if torch.is_anomaly_enabled():
+    if torch.is_anomaly_enabled(): # False
         assert torch.all(torch.isfinite(out)), "Output of prepare_shading_normal contains inf or NaN"
     return out
 
 #----------------------------------------------------------------------------
 # BSDF functions
 
-class _lambert_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, nrm, wi):
-        out = _get_plugin().lambert_fwd(nrm, wi, False)
-        ctx.save_for_backward(nrm, wi)
-        return out
+# class _lambert_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, nrm, wi):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        nrm, wi = ctx.saved_variables
-        return _get_plugin().lambert_bwd(nrm, wi, dout) + (None,)
+#         out = _get_plugin().lambert_fwd(nrm, wi, False)
+#         ctx.save_for_backward(nrm, wi)
+#         return out
 
-def lambert(nrm, wi, use_python=False):
-    '''Lambertian bsdf. 
-    All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent.
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    Args:
-        nrm: World space shading normal.
-        wi: World space light vector.
-        use_python: Use PyTorch implementation (for validation)
+#         nrm, wi = ctx.saved_variables
+#         return _get_plugin().lambert_bwd(nrm, wi, dout) + (None,)
 
-    Returns:
-        Shaded diffuse value with shape [minibatch_size, height, width, 1]
-    '''
-    pdb.set_trace()
+# def lambert(nrm, wi, use_python=False):
+#     '''Lambertian bsdf. 
+#     All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent.
 
-    if use_python:
-        out = bsdf_lambert(nrm, wi)
-    else:
-        out = _lambert_func.apply(nrm, wi)
+#     Args:
+#         nrm: World space shading normal.
+#         wi: World space light vector.
+#         use_python: Use PyTorch implementation (for validation)
+
+#     Returns:
+#         Shaded diffuse value with shape [minibatch_size, height, width, 1]
+#     '''
+#     pdb.set_trace()
+
+#     if use_python:
+#         out = bsdf_lambert(nrm, wi)
+#     else:
+#         out = _lambert_func.apply(nrm, wi)
  
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of lambert contains inf or NaN"
-    return out
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of lambert contains inf or NaN"
+#     return out
 
-class _frostbite_diffuse_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, nrm, wi, wo, linearRoughness):
-        out = _get_plugin().frostbite_fwd(nrm, wi, wo, linearRoughness, False)
-        ctx.save_for_backward(nrm, wi, wo, linearRoughness)
-        return out
+# class _frostbite_diffuse_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, nrm, wi, wo, linearRoughness):
+#         pdb.set_trace()
+#         out = _get_plugin().frostbite_fwd(nrm, wi, wo, linearRoughness, False)
+#         ctx.save_for_backward(nrm, wi, wo, linearRoughness)
+#         return out
 
-    @staticmethod
-    def backward(ctx, dout):
-        nrm, wi, wo, linearRoughness = ctx.saved_variables
-        return _get_plugin().frostbite_bwd(nrm, wi, wo, linearRoughness, dout) + (None,)
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-def frostbite_diffuse(nrm, wi, wo, linearRoughness, use_python=False):
-    '''Frostbite, normalized Disney Diffuse bsdf. 
-    All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent.
+#         nrm, wi, wo, linearRoughness = ctx.saved_variables
+#         return _get_plugin().frostbite_bwd(nrm, wi, wo, linearRoughness, dout) + (None,)
 
-    Args:
-        nrm: World space shading normal.
-        wi: World space light vector.
-        wo: World space camera vector.
-        linearRoughness: Material roughness
-        use_python: Use PyTorch implementation (for validation)
+# def frostbite_diffuse(nrm, wi, wo, linearRoughness, use_python=False):
+#     '''Frostbite, normalized Disney Diffuse bsdf. 
+#     All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent.
 
-    Returns:
-        Shaded diffuse value with shape [minibatch_size, height, width, 1]
-    '''
-    pdb.set_trace()
+#     Args:
+#         nrm: World space shading normal.
+#         wi: World space light vector.
+#         wo: World space camera vector.
+#         linearRoughness: Material roughness
+#         use_python: Use PyTorch implementation (for validation)
 
-    if use_python:
-        out = bsdf_frostbite(nrm, wi, wo, linearRoughness)
-    else:
-        out = _frostbite_diffuse_func.apply(nrm, wi, wo, linearRoughness)
+#     Returns:
+#         Shaded diffuse value with shape [minibatch_size, height, width, 1]
+#     '''
+#     pdb.set_trace()
+
+#     if use_python:
+#         out = bsdf_frostbite(nrm, wi, wo, linearRoughness)
+#     else:
+#         out = _frostbite_diffuse_func.apply(nrm, wi, wo, linearRoughness)
  
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of lambert contains inf or NaN"
-    return out
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of lambert contains inf or NaN"
+#     return out
 
-class _pbr_specular_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, col, nrm, wo, wi, alpha, min_roughness):
-        ctx.save_for_backward(col, nrm, wo, wi, alpha)
-        ctx.min_roughness = min_roughness
-        out = _get_plugin().pbr_specular_fwd(col, nrm, wo, wi, alpha, min_roughness, False)
-        return out
+# class _pbr_specular_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, col, nrm, wo, wi, alpha, min_roughness):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        col, nrm, wo, wi, alpha = ctx.saved_variables
-        return _get_plugin().pbr_specular_bwd(col, nrm, wo, wi, alpha, ctx.min_roughness, dout) + (None, None)
+#         ctx.save_for_backward(col, nrm, wo, wi, alpha)
+#         ctx.min_roughness = min_roughness
+#         out = _get_plugin().pbr_specular_fwd(col, nrm, wo, wi, alpha, min_roughness, False)
+#         return out
 
-def pbr_specular(col, nrm, wo, wi, alpha, min_roughness=0.08, use_python=False):
-    '''Physically-based specular bsdf.
-    All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    Args:
-        col: Specular lobe color
-        nrm: World space shading normal.
-        wo: World space camera vector.
-        wi: World space light vector
-        alpha: Specular roughness parameter with shape [minibatch_size, height, width, 1]
-        min_roughness: Scalar roughness clamping threshold
+#         col, nrm, wo, wi, alpha = ctx.saved_variables
+#         return _get_plugin().pbr_specular_bwd(col, nrm, wo, wi, alpha, ctx.min_roughness, dout) + (None, None)
 
-        use_python: Use PyTorch implementation (for validation)
-    Returns:
-        Shaded specular color
-    '''
-    pdb.set_trace()
-    if use_python:
-        out = bsdf_pbr_specular(col, nrm, wo, wi, alpha, min_roughness=min_roughness)
-    else:
-        out = _pbr_specular_func.apply(col, nrm, wo, wi, alpha, min_roughness)
+# def pbr_specular(col, nrm, wo, wi, alpha, min_roughness=0.08, use_python=False):
+#     '''Physically-based specular bsdf.
+#     All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
+
+#     Args:
+#         col: Specular lobe color
+#         nrm: World space shading normal.
+#         wo: World space camera vector.
+#         wi: World space light vector
+#         alpha: Specular roughness parameter with shape [minibatch_size, height, width, 1]
+#         min_roughness: Scalar roughness clamping threshold
+
+#         use_python: Use PyTorch implementation (for validation)
+#     Returns:
+#         Shaded specular color
+#     '''
+#     pdb.set_trace()
+#     if use_python:
+#         out = bsdf_pbr_specular(col, nrm, wo, wi, alpha, min_roughness=min_roughness)
+#     else:
+#         out = _pbr_specular_func.apply(col, nrm, wo, wi, alpha, min_roughness)
     
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of pbr_specular contains inf or NaN"
-    return out
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of pbr_specular contains inf or NaN"
+#     return out
 
-class _pbr_bsdf_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF):
-        ctx.save_for_backward(kd, arm, pos, nrm, view_pos, light_pos)
-        ctx.min_roughness = min_roughness
-        ctx.BSDF = BSDF
-        out = _get_plugin().pbr_bsdf_fwd(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF, False)
-        return out
+# class _pbr_bsdf_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        kd, arm, pos, nrm, view_pos, light_pos = ctx.saved_variables
-        return _get_plugin().pbr_bsdf_bwd(kd, arm, pos, nrm, view_pos, light_pos, ctx.min_roughness, ctx.BSDF, dout) + (None, None, None)
+#         ctx.save_for_backward(kd, arm, pos, nrm, view_pos, light_pos)
+#         ctx.min_roughness = min_roughness
+#         ctx.BSDF = BSDF
+#         out = _get_plugin().pbr_bsdf_fwd(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF, False)
+#         return out
 
-def pbr_bsdf(kd, arm, pos, nrm, view_pos, light_pos, min_roughness=0.08, bsdf="lambert", use_python=False):
-    '''Physically-based bsdf, both diffuse & specular lobes
-    All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    Args:
-        kd: Diffuse albedo.
-        arm: Specular parameters (attenuation, linear roughness, metalness).
-        pos: World space position.
-        nrm: World space shading normal.
-        view_pos: Camera position in world space, typically using broadcasting.
-        light_pos: Light position in world space, typically using broadcasting.
-        min_roughness: Scalar roughness clamping threshold
-        bsdf: Controls diffuse BSDF, can be either 'lambert' or 'frostbite'
+#         kd, arm, pos, nrm, view_pos, light_pos = ctx.saved_variables
+#         return _get_plugin().pbr_bsdf_bwd(kd, arm, pos, nrm, view_pos, light_pos, ctx.min_roughness, ctx.BSDF, dout) + (None, None, None)
 
-        use_python: Use PyTorch implementation (for validation)
+# def pbr_bsdf(kd, arm, pos, nrm, view_pos, light_pos, min_roughness=0.08, bsdf="lambert", use_python=False):
+#     '''Physically-based bsdf, both diffuse & specular lobes
+#     All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
 
-    Returns:
-        Shaded color.
-    '''    
+#     Args:
+#         kd: Diffuse albedo.
+#         arm: Specular parameters (attenuation, linear roughness, metalness).
+#         pos: World space position.
+#         nrm: World space shading normal.
+#         view_pos: Camera position in world space, typically using broadcasting.
+#         light_pos: Light position in world space, typically using broadcasting.
+#         min_roughness: Scalar roughness clamping threshold
+#         bsdf: Controls diffuse BSDF, can be either 'lambert' or 'frostbite'
 
-    BSDF = 0 
-    if bsdf == 'frostbite':
-        BSDF = 1
+#         use_python: Use PyTorch implementation (for validation)
 
-    pdb.set_trace()
-    if use_python:
-        out = bsdf_pbr(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF)
-    else:
-        out = _pbr_bsdf_func.apply(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF)
+#     Returns:
+#         Shaded color.
+#     '''    
+#     pdb.set_trace()
+
+#     BSDF = 0 
+#     if bsdf == 'frostbite':
+#         BSDF = 1
+
+#     pdb.set_trace()
+#     if use_python:
+#         out = bsdf_pbr(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF)
+#     else:
+#         out = _pbr_bsdf_func.apply(kd, arm, pos, nrm, view_pos, light_pos, min_roughness, BSDF)
     
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of pbr_bsdf contains inf or NaN"
-    return out
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of pbr_bsdf contains inf or NaN"
+#     return out
 
 #----------------------------------------------------------------------------
 # cubemap filter with filtering across edges
 
 class _diffuse_cubemap_func(torch.autograd.Function):
+    # ==> Here
     @staticmethod
     def forward(ctx, cubemap):
+        # ==> pdb.set_trace()
         out = _get_plugin().diffuse_cubemap_fwd(cubemap)
         ctx.save_for_backward(cubemap)
         return out
 
     @staticmethod
     def backward(ctx, dout):
+        # --> pdb.set_trace()       
         cubemap, = ctx.saved_variables
         cubemap_grad = _get_plugin().diffuse_cubemap_bwd(cubemap, dout)
         return cubemap_grad, None
 
 def diffuse_cubemap(cubemap, use_python=False):
+    # cubemap.size() -- [6, 16, 16, 3]
+    # use_python = False
     if use_python:
         assert False
     else:
         out = _diffuse_cubemap_func.apply(cubemap)
-    if torch.is_anomaly_enabled():
+    if torch.is_anomaly_enabled(): # False
         assert torch.all(torch.isfinite(out)), "Output of diffuse_cubemap contains inf or NaN"
     return out
 
 class _specular_cubemap(torch.autograd.Function):
     @staticmethod
     def forward(ctx, cubemap, roughness, costheta_cutoff, bounds):
+        # cubemap.size() -- [6, 512, 512, 3]
+        # roughness, costheta_cutoff -- (0.08, 0.9997669655912325)
+        # bounds.size() -- [6, 512, 512, 24]
         out = _get_plugin().specular_cubemap_fwd(cubemap, bounds, roughness, costheta_cutoff)
         ctx.save_for_backward(cubemap, bounds)
         ctx.roughness, ctx.theta_cutoff = roughness, costheta_cutoff
@@ -426,13 +477,19 @@ class _specular_cubemap(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, dout):
+        #--> pdb.set_trace()
         cubemap, bounds = ctx.saved_variables
         cubemap_grad = _get_plugin().specular_cubemap_bwd(cubemap, bounds, dout, ctx.roughness, ctx.theta_cutoff)
         return cubemap_grad, None, None, None
 
 # Compute the bounds of the GGX NDF lobe to retain "cutoff" percent of the energy
 def __ndfBounds(res, roughness, cutoff):
+    # pdb.set_trace()
     def ndfGGX(alphaSqr, costheta):
+        # alphaSqr = 4.096e-05
+        # costheta = array([1.0000000e+00, 1.0000000e+00, 1.0000000e+00, ..., 3.1415958e-06,
+        #     1.5707979e-06, 6.1232340e-17])
+        # costheta.shape -- (1000000,)
         costheta = np.clip(costheta, 0.0, 1.0)
         d = (costheta * alphaSqr - costheta) * costheta + 1.0
         return alphaSqr / (d * d * np.pi)
@@ -450,6 +507,11 @@ def __ndfBounds(res, roughness, cutoff):
 __ndfBoundsDict = {}
 
 def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
+    # ==> pdb.set_trace()
+    # cubemap.size() -- [6, 512, 512, 3]
+    # roughness = 0.08
+    # cutoff = 0.99
+    # use_python = False
     assert cubemap.shape[0] == 6 and cubemap.shape[1] == cubemap.shape[2], "Bad shape for cubemap tensor: %s" % str(cubemap.shape)
 
     if use_python:
@@ -466,42 +528,48 @@ def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
 #----------------------------------------------------------------------------
 # Fast image loss function
 
-class _image_loss_func(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, img, target, loss, tonemapper):
-        ctx.loss, ctx.tonemapper = loss, tonemapper
-        ctx.save_for_backward(img, target)
-        out = _get_plugin().image_loss_fwd(img, target, loss, tonemapper, False)
-        return out
+# class _image_loss_func(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, img, target, loss, tonemapper):
+#         pdb.set_trace()
 
-    @staticmethod
-    def backward(ctx, dout):
-        img, target = ctx.saved_variables
-        return _get_plugin().image_loss_bwd(img, target, dout, ctx.loss, ctx.tonemapper) + (None, None, None)
+#         ctx.loss, ctx.tonemapper = loss, tonemapper
+#         ctx.save_for_backward(img, target)
+#         out = _get_plugin().image_loss_fwd(img, target, loss, tonemapper, False)
+#         return out
 
-def image_loss(img, target, loss='l1', tonemapper='none', use_python=False):
-    '''Compute HDR image loss. Combines tonemapping and loss into a single kernel for better perf.
-    All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
+#     @staticmethod
+#     def backward(ctx, dout):
+#         pdb.set_trace()
 
-    Args:
-        img: Input image.
-        target: Target (reference) image. 
-        loss: Type of loss. Valid options are ['l1', 'mse', 'smape', 'relmse']
-        tonemapper: Tonemapping operations. Valid options are ['none', 'log_srgb']
-        use_python: Use PyTorch implementation (for validation)
+#         img, target = ctx.saved_variables
+#         return _get_plugin().image_loss_bwd(img, target, dout, ctx.loss, ctx.tonemapper) + (None, None, None)
 
-    Returns:
-        Image space loss (scalar value).
-    '''
-    if use_python: # False
-        out = image_loss_fn(img, target, loss, tonemapper)
-    else:
-        out = _image_loss_func.apply(img, target, loss, tonemapper)
-        out = torch.sum(out) / (img.shape[0]*img.shape[1]*img.shape[2])
+# def image_loss(img, target, loss='l1', tonemapper='none', use_python=False):
+#     '''Compute HDR image loss. Combines tonemapping and loss into a single kernel for better perf.
+#     All tensors assume a shape of [minibatch_size, height, width, 3] or broadcastable equivalent unless otherwise noted.
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of image_loss contains inf or NaN"
-    return out
+#     Args:
+#         img: Input image.
+#         target: Target (reference) image. 
+#         loss: Type of loss. Valid options are ['l1', 'mse', 'smape', 'relmse']
+#         tonemapper: Tonemapping operations. Valid options are ['none', 'log_srgb']
+#         use_python: Use PyTorch implementation (for validation)
+
+#     Returns:
+#         Image space loss (scalar value).
+#     '''
+#     pdb.set_trace()
+
+#     if use_python: # False
+#         out = image_loss_fn(img, target, loss, tonemapper)
+#     else:
+#         out = _image_loss_func.apply(img, target, loss, tonemapper)
+#         out = torch.sum(out) / (img.shape[0]*img.shape[1]*img.shape[2])
+
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of image_loss contains inf or NaN"
+#     return out
 
 #----------------------------------------------------------------------------
 # Transform points function
@@ -527,6 +595,8 @@ def xfm_points(points, matrix, use_python=False):
     Returns:
         Transformed points in homogeneous 4D with shape [minibatch_size, num_vertices, 4].
     '''
+    # points.size() -- [1, 5344, 3]
+    # matrix.size() -- [1, 4, 4]
     if use_python: # False
         out = torch.matmul(torch.nn.functional.pad(points, pad=(0,1), mode='constant', value=1.0), torch.transpose(matrix, 1, 2))
     else:
@@ -536,25 +606,22 @@ def xfm_points(points, matrix, use_python=False):
         assert torch.all(torch.isfinite(out)), "Output of xfm_points contains inf or NaN"
     return out
 
-def xfm_vectors(vectors, matrix, use_python=False):
-    '''Transform vectors.
-    Args:
-        vectors: Tensor containing 3D vectors with shape [minibatch_size, num_vertices, 3] or [1, num_vertices, 3]
-        matrix: A 4x4 transform matrix with shape [minibatch_size, 4, 4]
-        use_python: Use PyTorch's torch.matmul (for validation)
+# def xfm_vectors(vectors, matrix, use_python=False):
+#     '''Transform vectors.
+#     Args:
+#         vectors: Tensor containing 3D vectors with shape [minibatch_size, num_vertices, 3] or [1, num_vertices, 3]
+#         matrix: A 4x4 transform matrix with shape [minibatch_size, 4, 4]
+#         use_python: Use PyTorch's torch.matmul (for validation)
 
-    Returns:
-        Transformed vectors in homogeneous 4D with shape [minibatch_size, num_vertices, 4].
-    '''    
-    pdb.set_trace()
-    if use_python:
-        out = torch.matmul(torch.nn.functional.pad(vectors, pad=(0,1), mode='constant', value=0.0), torch.transpose(matrix, 1, 2))[..., 0:3].contiguous()
-    else:
-        out = _xfm_func.apply(vectors, matrix, False)
+#     Returns:
+#         Transformed vectors in homogeneous 4D with shape [minibatch_size, num_vertices, 4].
+#     '''    
+#     pdb.set_trace()
+#     if use_python:
+#         out = torch.matmul(torch.nn.functional.pad(vectors, pad=(0,1), mode='constant', value=0.0), torch.transpose(matrix, 1, 2))[..., 0:3].contiguous()
+#     else:
+#         out = _xfm_func.apply(vectors, matrix, False)
 
-    if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of xfm_vectors contains inf or NaN"
-    return out
-
-
-
+#     if torch.is_anomaly_enabled():
+#         assert torch.all(torch.isfinite(out)), "Output of xfm_vectors contains inf or NaN"
+#     return out

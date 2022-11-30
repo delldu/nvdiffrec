@@ -20,6 +20,10 @@ import pdb
 #  Helper functions
 # ==============================================================================================
 def interpolate(attr, rast, attr_idx, rast_db=None):
+    # attr.size() -- [1, 5344, 3]
+    # rast.size() -- [1, 512, 512, 4]
+    # attr_idx.size() -- [10688, 3]
+    # rast_db = None
     return dr.interpolate(attr.contiguous(), rast, attr_idx, rast_db=rast_db, diff_attrs=None if rast_db is None else 'all')
 
 # ==============================================================================================
@@ -37,12 +41,27 @@ def shade(
         material,
         bsdf
     ):
+    # gb_pos.size() -- [1, 512, 512, 3]
+    # gb_geometric_normal.size() -- [1, 512, 512, 3]
+    # gb_normal.size() -- [1, 512, 512, 3]
+    # gb_tangent.size() -- [1, 512, 512, 3]
+    # gb_texc.size() -- [1, 512, 512, 2]
+    # gb_texc_deriv.size() -- [1, 512, 512, 4]
+
+    # view_pos = tensor([[[[-0.4691, -0.7334,  2.7648]]]], device='cuda:0')
+    # lgt = EnvironmentLight()
+    # material = Material(
+    #   (kd): Texture2D()
+    #   (ks): Texture2D()
+    # )
+    # bsdf = None
 
     ################################################################################
     # Texture lookups
     ################################################################################
     perturbed_nrm = None
-    if 'kd_ks_normal' in material: # False
+    if 'kd_ks_normal' in material: # True
+        # ==> Here !!!
         # Combined texture, used for MLPs because lookups are expensive
         all_tex_jitter = material['kd_ks_normal'].sample(gb_pos + torch.normal(mean=0, std=0.01, size=gb_pos.shape, device="cuda"))
         all_tex = material['kd_ks_normal'].sample(gb_pos)
@@ -51,6 +70,7 @@ def shade(
         # Compute albedo (kd) gradient, used for material regularizer
         kd_grad    = torch.sum(torch.abs(all_tex_jitter[..., :-6] - all_tex[..., :-6]), dim=-1, keepdim=True) / 3
     else:
+        # ==> pdb.set_trace()
         kd_jitter  = material['kd'].sample(gb_texc + torch.normal(mean=0, std=0.005, size=gb_texc.shape, device="cuda"), gb_texc_deriv)
         kd = material['kd'].sample(gb_texc, gb_texc_deriv)
         ks = material['ks'].sample(gb_texc, gb_texc_deriv)[..., 0:3] # skip alpha
@@ -66,6 +86,7 @@ def shade(
     # Normal perturbation & normal bend
     ################################################################################
     if 'no_perturbed_nrm' in material and material['no_perturbed_nrm']: # False
+        pdb.set_trace()
         perturbed_nrm = None
 
     gb_normal = ru.prepare_shading_normal(gb_pos, view_pos, perturbed_nrm, gb_normal, gb_tangent, gb_geometric_normal, two_sided_shading=True, opengl=True)
@@ -124,6 +145,16 @@ def render_layer(
         msaa,
         bsdf
     ):
+    # rast.size() -- [1, 512, 512, 4]
+    # rast_deriv.size() -- [1, 512, 512, 4]
+
+    # mesh = <render.mesh.Mesh object at 0x7f2d55d87fa0>
+    # view_pos = tensor([[[[ 2.3236, -0.2347,  1.7603]]]], device='cuda:0')
+    # lgt = EnvironmentLight()
+    # resolution = [512, 512]
+    # spp ====== 1
+    # msaa = True
+    # bsdf = None
 
     full_res = [resolution[0]*spp, resolution[1]*spp]
 

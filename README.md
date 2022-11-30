@@ -1,3 +1,8 @@
+读论文：(nvdiffrec) Extracting Triangular 3D Models, Materials, and Lighting From Images
+https://blog.csdn.net/qq_34342853/article/details/125622816
+
+
+
 # nvdiffrec
 
 ![Teaser image](https://nvlabs.github.io/nvdiffrec/assets/system.JPG "Teaser image")
