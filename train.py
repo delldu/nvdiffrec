@@ -104,7 +104,8 @@ def xatlas_uvmap(glctx, geometry, mat, FLAGS):
 
     new_mesh = mesh.Mesh(v_tex=uvs, t_tex_idx=faces, base=eval_mesh)
 
-    mask, kd, ks, normal = render.render_uv(glctx, new_mesh, FLAGS.texture_res, eval_mesh.material['kd_ks_normal'])
+    mask, kd, ks, normal = render.render_uv(glctx, new_mesh, FLAGS.texture_res, 
+        eval_mesh.material['kd_ks_normal'])
     
     if FLAGS.layers > 1:
         kd = torch.cat((kd, torch.rand_like(kd[...,0:1])), dim=-1)
@@ -274,7 +275,15 @@ def optimize_mesh(
     # lgt = EnvironmentLight()
     # dataset_train = <dataset.dataset_mesh.DatasetMesh object at 0x7fb240aadee0>
     # dataset_validate = <dataset.dataset_mesh.DatasetMesh object at 0x7fb240a89b50>
-    # FLAGS = Namespace(config='configs/bob.json', iter=200, batch=4, spp=1, layers=1, train_res=[512, 512], texture_res=[1024, 1024], display_interval=0, save_interval=100, learning_rate=[0.03, 0.003], min_roughness=0.08,background='white', loss='logl1', out_dir='out/bob', ref_mesh='data/bob/bob_tri.obj', base_mesh=None, validate=False, mtl_override=None, dmtet_grid=64, mesh_scale=2.1, env_scale=2.0, envmap='data/irrmaps/aerodynamics_workshop_2k.hdr', display=None, sdf_regularizer=0.2, laplace='relative', laplace_scale=10000.0, pre_load=True, kd_min=[0.0, 0.0, 0.0, 0.0], kd_max=[1.0, 1.0, 1.0, 1.0], ks_min=[0, 0.25, 0], ks_max=[1.0, 1.0, 1.0], nrm_min=[-1.0, -1.0, 0.0], nrm_max=[1.0, 1.0, 1.0], cam_near_far=[0.1, 1000.0])
+    # FLAGS = Namespace(config='configs/bob.json', iter=200, batch=4, spp=1, layers=1, 
+    # train_res=[512, 512], texture_res=[1024, 1024], display_interval=0, save_interval=100, 
+    # learning_rate=[0.03, 0.003], min_roughness=0.08,background='white', loss='logl1', 
+    # out_dir='out/bob', ref_mesh='data/bob/bob_tri.obj', base_mesh=None, validate=False, 
+    # mtl_override=None, dmtet_grid=64, mesh_scale=2.1, env_scale=2.0, 
+    # envmap='data/irrmaps/aerodynamics_workshop_2k.hdr', display=None, sdf_regularizer=0.2, 
+    # laplace='relative', laplace_scale=10000.0, pre_load=True, kd_min=[0.0, 0.0, 0.0, 0.0], 
+    # kd_max=[1.0, 1.0, 1.0, 1.0], ks_min=[0, 0.25, 0], ks_max=[1.0, 1.0, 1.0], 
+    # nrm_min=[-1.0, -1.0, 0.0], nrm_max=[1.0, 1.0, 1.0], cam_near_far=[0.1, 1000.0])
     # pass_name = 'dmtet_pass1'
 
     # ==============================================================================================
