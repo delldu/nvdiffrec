@@ -42,11 +42,11 @@
 # 	mtx_ref = mtx_cuda.clone().detach().requires_grad_(True)
 # 	target = torch.rand(BATCH, RES, 4, dtype=DTYPE, device='cuda', requires_grad=True)
 
-# 	ref_out = ru.xfm_points(points_ref, mtx_ref, use_python=True)
+# 	ref_out = ru.points_transform(points_ref, mtx_ref, use_python=True)
 # 	ref_loss = torch.nn.MSELoss()(ref_out, target)
 # 	ref_loss.backward()
 
-# 	cuda_out = ru.xfm_points(points_cuda, mtx_cuda)
+# 	cuda_out = ru.points_transform(points_cuda, mtx_cuda)
 # 	cuda_loss = torch.nn.MSELoss()(cuda_out, target)
 # 	cuda_loss.backward()
 
@@ -72,11 +72,11 @@
 # 	cuda_loss = torch.nn.MSELoss()(cuda_out, target[..., 0:3])
 # 	cuda_loss.backward()
 
-# 	ref_out_p = ru.xfm_points(points_ref_p.contiguous(), mtx_ref, use_python=True)
+# 	ref_out_p = ru.points_transform(points_ref_p.contiguous(), mtx_ref, use_python=True)
 # 	ref_loss_p = torch.nn.MSELoss()(ref_out_p, target)
 # 	ref_loss_p.backward()
 	
-# 	cuda_out_p = ru.xfm_points(points_cuda_p.contiguous(), mtx_cuda)
+# 	cuda_out_p = ru.points_transform(points_cuda_p.contiguous(), mtx_cuda)
 # 	cuda_loss_p = torch.nn.MSELoss()(cuda_out_p, target)
 # 	cuda_loss_p.backward()
 

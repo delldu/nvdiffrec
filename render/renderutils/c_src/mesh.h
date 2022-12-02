@@ -13,7 +13,7 @@
 
 #include "common.h"
 
-struct XfmKernelParams
+struct PointsTransformKernelParams
 {
     bool            isPoints;
     Tensor          points;

@@ -37,11 +37,11 @@
 # 	geom_nrm_ref = geom_nrm_cuda.clone().detach().requires_grad_(True)
 # 	target = torch.rand(1, RES, RES, 3, dtype=DTYPE, device='cuda')
 
-# 	ref = ru.prepare_shading_normal(pos_ref, view_pos_ref, perturbed_nrm_ref, smooth_nrm_ref, smooth_tng_ref, geom_nrm_ref, True, use_python=True)
+# 	ref = ru.shading_normal(pos_ref, view_pos_ref, perturbed_nrm_ref, smooth_nrm_ref, smooth_tng_ref, geom_nrm_ref, True, use_python=True)
 # 	ref_loss = torch.nn.MSELoss()(ref, target)
 # 	ref_loss.backward()
 
-# 	cuda = ru.prepare_shading_normal(pos_cuda, view_pos_cuda, perturbed_nrm_cuda, smooth_nrm_cuda, smooth_tng_cuda, geom_nrm_cuda, True)
+# 	cuda = ru.shading_normal(pos_cuda, view_pos_cuda, perturbed_nrm_cuda, smooth_nrm_cuda, smooth_tng_cuda, geom_nrm_cuda, True)
 # 	cuda_loss = torch.nn.MSELoss()(cuda, target)
 # 	cuda_loss.backward()
 

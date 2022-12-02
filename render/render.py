@@ -89,7 +89,7 @@ def shade(
         pdb.set_trace()
         perturbed_nrm = None
 
-    gb_normal = ru.prepare_shading_normal(gb_pos, view_pos, perturbed_nrm, gb_normal, gb_tangent, gb_geometric_normal, two_sided_shading=True, opengl=True)
+    gb_normal = ru.shading_normal(gb_pos, view_pos, perturbed_nrm, gb_normal, gb_tangent, gb_geometric_normal, two_sided_shading=True, opengl=True)
 
     ################################################################################
     # Evaluate BSDF
@@ -267,7 +267,7 @@ def render_mesh(
     view_pos    = prepare_input_vector(view_pos)
 
     # clip space transform
-    v_pos_clip = ru.xfm_points(mesh.v_pos[None, ...], mtx_in)
+    v_pos_clip = ru.points_transform(mesh.v_pos[None, ...], mtx_in)
 
     # Render all layers front-to-back
     layers = []

@@ -13,14 +13,14 @@
 
 #include "common.h"
 
-struct DiffuseCubemapKernelParams
+struct CubemapDiffuseKernelParams
 {
     Tensor  cubemap;
     Tensor  out;
     dim3    gridSize;
 };
 
-struct SpecularCubemapKernelParams
+struct CubemapSpecularKernelParams
 {
     Tensor  cubemap;
     Tensor  bounds;

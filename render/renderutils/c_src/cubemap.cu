@@ -45,69 +45,69 @@ __device__ vec3f cube_to_dir(int x, int y, int side, int N)
     return vec3f(0,0,0); // Unreachable
 }
 
-__device__ vec3f dir_to_side(int side, vec3f v)
-{
-    switch (side)
-    {
-    case 0: return vec3f(-v.z, -v.y,  v.x);
-    case 1: return vec3f( v.z, -v.y, -v.x);
-    case 2: return vec3f( v.x,  v.z,  v.y);
-    case 3: return vec3f( v.x, -v.z, -v.y);
-    case 4: return vec3f( v.x, -v.y,  v.z);
-    case 5: return vec3f(-v.x, -v.y, -v.z);
-    }
-    return vec3f(0,0,0); // Unreachable
-}
+// __device__ vec3f dir_to_side(int side, vec3f v)
+// {
+//     switch (side)
+//     {
+//     case 0: return vec3f(-v.z, -v.y,  v.x);
+//     case 1: return vec3f( v.z, -v.y, -v.x);
+//     case 2: return vec3f( v.x,  v.z,  v.y);
+//     case 3: return vec3f( v.x, -v.z, -v.y);
+//     case 4: return vec3f( v.x, -v.y,  v.z);
+//     case 5: return vec3f(-v.x, -v.y, -v.z);
+//     }
+//     return vec3f(0,0,0); // Unreachable
+// }
 
-__device__ void extents_1d(float x, float z, float theta, float& _min, float& _max)
-{
-    float l = sqrtf(x * x + z * z);
-    float pxr = x + z * tan(theta) * l, pzr = z - x * tan(theta) * l;
-    float pxl = x - z * tan(theta) * l, pzl = z + x * tan(theta) * l;
-    if (pzl <= 0.00001f)
-        _min = pxl > 0.0f ? FLT_MAX : -FLT_MAX;
-    else
-        _min = pxl / pzl;
-    if (pzr <= 0.00001f)
-        _max = pxr > 0.0f ? FLT_MAX : -FLT_MAX;
-    else
-        _max = pxr / pzr;
-}
+// __device__ void extents_1d(float x, float z, float theta, float& _min, float& _max)
+// {
+//     float l = sqrtf(x * x + z * z);
+//     float pxr = x + z * tan(theta) * l, pzr = z - x * tan(theta) * l;
+//     float pxl = x - z * tan(theta) * l, pzl = z + x * tan(theta) * l;
+//     if (pzl <= 0.00001f)
+//         _min = pxl > 0.0f ? FLT_MAX : -FLT_MAX;
+//     else
+//         _min = pxl / pzl;
+//     if (pzr <= 0.00001f)
+//         _max = pxr > 0.0f ? FLT_MAX : -FLT_MAX;
+//     else
+//         _max = pxr / pzr;
+// }
 
-__device__ void dir_extents(int side, int N, vec3f v, float theta, int &_xmin, int& _xmax, int& _ymin, int& _ymax)
-{
-    vec3f c = dir_to_side(side, v); // remap to (x,y,z) where side is at z = 1
+// __device__ void dir_extents(int side, int N, vec3f v, float theta, int &_xmin, int& _xmax, int& _ymin, int& _ymax)
+// {
+//     vec3f c = dir_to_side(side, v); // remap to (x,y,z) where side is at z = 1
 
-    if (theta < 0.785398f) // PI/4
-    {
-        float xmin, xmax, ymin, ymax;
-        extents_1d(c.x, c.z, theta, xmin, xmax);
-        extents_1d(c.y, c.z, theta, ymin, ymax);
+//     if (theta < 0.785398f) // PI/4
+//     {
+//         float xmin, xmax, ymin, ymax;
+//         extents_1d(c.x, c.z, theta, xmin, xmax);
+//         extents_1d(c.y, c.z, theta, ymin, ymax);
 
-        if (xmin > 1.0f || xmax < -1.0f || ymin > 1.0f || ymax < -1.0f)
-        {
-            _xmin = -1; _xmax = -1; _ymin = -1; _ymax = -1; // Bad aabb
-        }
-        else
-        {
-            _xmin = (int)min(max((xmin + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
-            _xmax = (int)min(max((xmax + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
-            _ymin = (int)min(max((ymin + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
-            _ymax = (int)min(max((ymax + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
-        }
-    }
-    else
-    {
-            _xmin = 0.0f;
-            _xmax = (float)(N-1);
-            _ymin = 0.0f;
-            _ymax = (float)(N-1);
-    }
-}
+//         if (xmin > 1.0f || xmax < -1.0f || ymin > 1.0f || ymax < -1.0f)
+//         {
+//             _xmin = -1; _xmax = -1; _ymin = -1; _ymax = -1; // Bad aabb
+//         }
+//         else
+//         {
+//             _xmin = (int)min(max((xmin + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
+//             _xmax = (int)min(max((xmax + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
+//             _ymin = (int)min(max((ymin + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
+//             _ymax = (int)min(max((ymax + 1.0f) * (0.5f * (float)N), 0.0f), (float)(N - 1));
+//         }
+//     }
+//     else
+//     {
+//             _xmin = 0.0f;
+//             _xmax = (float)(N-1);
+//             _ymin = 0.0f;
+//             _ymax = (float)(N-1);
+//     }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Diffuse kernel
-__global__ void DiffuseCubemapFwdKernel(DiffuseCubemapKernelParams p)
+__global__ void CubemapDiffuseForwardKernel(CubemapDiffuseKernelParams p)
 {
     // Calculate pixel position.
     int px = blockIdx.x * blockDim.x + threadIdx.x;
@@ -138,7 +138,7 @@ __global__ void DiffuseCubemapFwdKernel(DiffuseCubemapKernelParams p)
     p.out.store(px, py, pz, col);
 }
 
-__global__ void DiffuseCubemapBwdKernel(DiffuseCubemapKernelParams p)
+__global__ void CubemapDiffuseBackwardKernel(CubemapDiffuseKernelParams p)
 {
     // Calculate pixel position.
     int px = blockIdx.x * blockDim.x + threadIdx.x;
@@ -243,7 +243,7 @@ __global__ void SpecularBoundsKernel(SpecularBoundsKernelParams p)
     }
 }
 
-__global__ void SpecularCubemapFwdKernel(SpecularCubemapKernelParams p)
+__global__ void CubemapSpecularForwardKernel(CubemapSpecularKernelParams p)
 {
     // Calculate pixel position.
     int px = blockIdx.x * blockDim.x + threadIdx.x;
@@ -297,7 +297,7 @@ __global__ void SpecularCubemapFwdKernel(SpecularCubemapKernelParams p)
     p.out.store(p.out._nhwcIndex(pz, py, px, 3), wsum);
 }
 
-__global__ void SpecularCubemapBwdKernel(SpecularCubemapKernelParams p)
+__global__ void CubemapSpecularBackwardKernel(CubemapSpecularKernelParams p)
 {
     // Calculate pixel position.
     int px = blockIdx.x * blockDim.x + threadIdx.x;

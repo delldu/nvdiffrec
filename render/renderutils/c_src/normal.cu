@@ -95,7 +95,7 @@ __device__ void bwdBendNormal(const vec3f view_vec, const vec3f smooth_nrm, cons
 //------------------------------------------------------------------------
 // Kernels
 
-__global__ void PrepareShadingNormalFwdKernel(PrepareShadingNormalKernelParams p) 
+__global__ void ShadingNormalForwardKernel(ShadingNormalKernelParams p) 
 {
     // Calculate pixel position.
     unsigned int px = blockIdx.x * blockDim.x + threadIdx.x;
@@ -125,7 +125,7 @@ __global__ void PrepareShadingNormalFwdKernel(PrepareShadingNormalKernelParams p
     p.out.store(px, py, pz, res);
 }
 
-__global__ void PrepareShadingNormalBwdKernel(PrepareShadingNormalKernelParams p) 
+__global__ void ShadingNormalBackwardKernel(ShadingNormalKernelParams p) 
 { 
     // Calculate pixel position.
     unsigned int px = blockIdx.x * blockDim.x + threadIdx.x;

@@ -19,7 +19,7 @@
 //------------------------------------------------------------------------
 // Kernels
 
-__global__ void xfmPointsFwdKernel(XfmKernelParams p)
+__global__ void PointsTransformFowardKernel(PointsTransformKernelParams p)
 {
     unsigned int px = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int pz = blockIdx.z * blockDim.z + threadIdx.z;
@@ -53,7 +53,7 @@ __global__ void xfmPointsFwdKernel(XfmKernelParams p)
     }
 }
 
-__global__ void xfmPointsBwdKernel(XfmKernelParams p)
+__global__ void PointsTransformBackwardKernel(PointsTransformKernelParams p)
 { 
     unsigned int px = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int pz = blockIdx.z * blockDim.z + threadIdx.z;

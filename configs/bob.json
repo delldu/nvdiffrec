@@ -1,7 +1,7 @@
 {
     "ref_mesh"  : "data/bob/bob_tri.obj",
     "random_textures": true,
-    "iter": 200,
+    "iter": 300,
     "save_interval": 100,
     "texture_res": [ 1024, 1024 ],
     "train_res": [512, 512],

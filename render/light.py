@@ -81,12 +81,12 @@ class EnvironmentLight(nn.Module):
         while self.specular[-1].shape[1] > self.LIGHT_MIN_RES:
             self.specular += [cubemap_mip_function.apply(self.specular[-1])]
 
-        self.diffuse = ru.diffuse_cubemap(self.specular[-1]) # self.specular[-1].size() -- [6, 16, 16, 3]
+        self.diffuse = ru.cubemap_diffuse(self.specular[-1]) # self.specular[-1].size() -- [6, 16, 16, 3]
 
         for idx in range(len(self.specular) - 1):
             roughness = (idx / (len(self.specular) - 2)) * (self.MAX_ROUGHNESS - self.MIN_ROUGHNESS) + self.MIN_ROUGHNESS
-            self.specular[idx] = ru.specular_cubemap(self.specular[idx], roughness, cutoff) 
-        self.specular[-1] = ru.specular_cubemap(self.specular[-1], 1.0, cutoff)
+            self.specular[idx] = ru.cubemap_specular(self.specular[idx], roughness, cutoff) 
+        self.specular[-1] = ru.cubemap_specular(self.specular[-1], 1.0, cutoff)
 
     def regularizer(self):
         white = (self.base[..., 0:1] + self.base[..., 1:2] + self.base[..., 2:3]) / 3.0

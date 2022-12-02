@@ -13,7 +13,7 @@
 
 #include "common.h"
 
-struct PrepareShadingNormalKernelParams
+struct ShadingNormalKernelParams
 {
     Tensor  pos;
     Tensor  view_pos;

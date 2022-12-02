@@ -7,9 +7,9 @@
 # without an express license agreement from NVIDIA CORPORATION or 
 # its affiliates is strictly prohibited.
 
-# from .ops import xfm_points, xfm_vectors, image_loss, diffuse_cubemap, specular_cubemap, prepare_shading_normal, lambert, frostbite_diffuse, pbr_specular, pbr_bsdf, _fresnel_shlick, _ndf_ggx, _lambda_ggx, _masking_smith
-# __all__ = ["xfm_vectors", "xfm_points", "image_loss", "diffuse_cubemap","specular_cubemap", "prepare_shading_normal", "lambert", "frostbite_diffuse", "pbr_specular", "pbr_bsdf", "_fresnel_shlick", "_ndf_ggx", "_lambda_ggx", "_masking_smith", ]
+# from .ops import points_transform, xfm_vectors, image_loss, cubemap_diffuse, cubemap_specular, shading_normal, lambert, frostbite_diffuse, pbr_specular, pbr_bsdf, _fresnel_shlick, _ndf_ggx, _lambda_ggx, _masking_smith
+# __all__ = ["xfm_vectors", "points_transform", "image_loss", "cubemap_diffuse","cubemap_specular", "shading_normal", "lambert", "frostbite_diffuse", "pbr_specular", "pbr_bsdf", "_fresnel_shlick", "_ndf_ggx", "_lambda_ggx", "_masking_smith", ]
 
 
-from .ops import xfm_points, diffuse_cubemap, specular_cubemap, prepare_shading_normal
-__all__ = ["xfm_points", "diffuse_cubemap", "specular_cubemap", "prepare_shading_normal"]
+from .ops import points_transform, cubemap_diffuse, cubemap_specular, shading_normal
+__all__ = ["points_transform", "cubemap_diffuse", "cubemap_specular", "shading_normal"]

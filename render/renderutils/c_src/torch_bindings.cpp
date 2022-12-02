@@ -43,8 +43,8 @@
 //------------------------------------------------------------------------
 // mesh.cu
 
-void xfmPointsFwdKernel(XfmKernelParams p);
-void xfmPointsBwdKernel(XfmKernelParams p);
+void PointsTransformFowardKernel(PointsTransformKernelParams p);
+void PointsTransformBackwardKernel(PointsTransformKernelParams p);
 
 //------------------------------------------------------------------------
 // loss.cu
@@ -55,17 +55,17 @@ void xfmPointsBwdKernel(XfmKernelParams p);
 //------------------------------------------------------------------------
 // normal.cu
 
-void PrepareShadingNormalFwdKernel(PrepareShadingNormalKernelParams p);
-void PrepareShadingNormalBwdKernel(PrepareShadingNormalKernelParams p);
+void ShadingNormalForwardKernel(ShadingNormalKernelParams p);
+void ShadingNormalBackwardKernel(ShadingNormalKernelParams p);
 
 //------------------------------------------------------------------------
 // cubemap.cu
 
-void DiffuseCubemapFwdKernel(DiffuseCubemapKernelParams p);
-void DiffuseCubemapBwdKernel(DiffuseCubemapKernelParams p);
+void CubemapDiffuseForwardKernel(CubemapDiffuseKernelParams p);
+void CubemapDiffuseBackwardKernel(CubemapDiffuseKernelParams p);
 void SpecularBoundsKernel(SpecularBoundsKernelParams p);
-void SpecularCubemapFwdKernel(SpecularCubemapKernelParams p);
-void SpecularCubemapBwdKernel(SpecularCubemapKernelParams p);
+void CubemapSpecularForwardKernel(CubemapSpecularKernelParams p);
+void CubemapSpecularBackwardKernel(CubemapSpecularKernelParams p);
 
 //------------------------------------------------------------------------
 // bsdf.cu
@@ -156,8 +156,8 @@ Tensor make_cuda_tensor(torch::Tensor val, dim3 outDims, torch::Tensor* grad = n
 }
 
 //------------------------------------------------------------------------
-// prepare_shading_normal
-torch::Tensor prepare_shading_normal_fwd(torch::Tensor pos, torch::Tensor view_pos, 
+// shading_normal
+torch::Tensor shading_normal_forward(torch::Tensor pos, torch::Tensor view_pos, 
     torch::Tensor perturbed_nrm, torch::Tensor smooth_nrm, torch::Tensor smooth_tng, 
     torch::Tensor geom_nrm, bool two_sided_shading, bool opengl, bool fp16)
 {
@@ -171,7 +171,7 @@ torch::Tensor prepare_shading_normal_fwd(torch::Tensor pos, torch::Tensor view_p
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    PrepareShadingNormalKernelParams p;
+    ShadingNormalKernelParams p;
     p.two_sided_shading = two_sided_shading;
     p.opengl = opengl;
     p.out.fp16 = fp16;
@@ -196,20 +196,20 @@ torch::Tensor prepare_shading_normal_fwd(torch::Tensor pos, torch::Tensor view_p
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)PrepareShadingNormalFwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)ShadingNormalForwardKernel, gridSize, blockSize, args, 0, stream));
 
     return out;
 }
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor> 
-prepare_shading_normal_bwd(torch::Tensor pos, torch::Tensor view_pos, torch::Tensor perturbed_nrm, 
+shading_normal_backward(torch::Tensor pos, torch::Tensor view_pos, torch::Tensor perturbed_nrm, 
     torch::Tensor smooth_nrm, torch::Tensor smooth_tng, torch::Tensor geom_nrm, torch::Tensor grad, 
     bool two_sided_shading, bool opengl)
 {
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    PrepareShadingNormalKernelParams p;
+    ShadingNormalKernelParams p;
     p.two_sided_shading = two_sided_shading;
     p.opengl = opengl;
     update_grid(p.gridSize, pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm);
@@ -230,7 +230,7 @@ prepare_shading_normal_bwd(torch::Tensor pos, torch::Tensor view_pos, torch::Ten
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)PrepareShadingNormalBwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)ShadingNormalBackwardKernel, gridSize, blockSize, args, 0, stream));
 
     return std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>(pos_grad, view_pos_grad, perturbed_nrm_grad, smooth_nrm_grad, smooth_tng_grad, geom_nrm_grad);
 }
@@ -740,14 +740,14 @@ prepare_shading_normal_bwd(torch::Tensor pos, torch::Tensor view_pos, torch::Ten
 
 //------------------------------------------------------------------------
 // filter_cubemap
-torch::Tensor diffuse_cubemap_fwd(torch::Tensor cubemap)
+torch::Tensor cubemap_diffuse_forward(torch::Tensor cubemap)
 {
     CHECK_TENSOR(cubemap, 4, 3);
 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    DiffuseCubemapKernelParams p;
+    CubemapDiffuseKernelParams p;
     update_grid(p.gridSize, cubemap);
 
     // Allocate output tensors.
@@ -764,12 +764,12 @@ torch::Tensor diffuse_cubemap_fwd(torch::Tensor cubemap)
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)DiffuseCubemapFwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)CubemapDiffuseForwardKernel, gridSize, blockSize, args, 0, stream));
 
     return out;
 }
 
-torch::Tensor diffuse_cubemap_bwd(torch::Tensor cubemap, torch::Tensor grad)
+torch::Tensor cubemap_diffuse_backward(torch::Tensor cubemap, torch::Tensor grad)
 {
     CHECK_TENSOR(cubemap, 4, 3);
     CHECK_TENSOR(grad, 4, 3);
@@ -777,7 +777,7 @@ torch::Tensor diffuse_cubemap_bwd(torch::Tensor cubemap, torch::Tensor grad)
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    DiffuseCubemapKernelParams p;
+    CubemapDiffuseKernelParams p;
     update_grid(p.gridSize, cubemap);
 
     // Choose launch parameters.
@@ -794,7 +794,7 @@ torch::Tensor diffuse_cubemap_bwd(torch::Tensor cubemap, torch::Tensor grad)
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)DiffuseCubemapBwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)CubemapDiffuseBackwardKernel, gridSize, blockSize, args, 0, stream));
 
     return cubemap_grad;
 }
@@ -826,7 +826,7 @@ torch::Tensor specular_bounds(int resolution, float costheta_cutoff)
     return out;
 }
 
-torch::Tensor specular_cubemap_fwd(torch::Tensor cubemap, torch::Tensor bounds, float roughness, float costheta_cutoff)
+torch::Tensor cubemap_specular_forward(torch::Tensor cubemap, torch::Tensor bounds, float roughness, float costheta_cutoff)
 {
     CHECK_TENSOR(cubemap, 4, 3);
     CHECK_TENSOR(bounds, 4, 6*4);
@@ -834,7 +834,7 @@ torch::Tensor specular_cubemap_fwd(torch::Tensor cubemap, torch::Tensor bounds, 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    SpecularCubemapKernelParams p;
+    CubemapSpecularKernelParams p;
     p.roughness = roughness;
     p.costheta_cutoff = costheta_cutoff;
     update_grid(p.gridSize, cubemap);
@@ -854,12 +854,12 @@ torch::Tensor specular_cubemap_fwd(torch::Tensor cubemap, torch::Tensor bounds, 
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)SpecularCubemapFwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)CubemapSpecularForwardKernel, gridSize, blockSize, args, 0, stream));
 
     return out;
 }
 
-torch::Tensor specular_cubemap_bwd(torch::Tensor cubemap, torch::Tensor bounds, torch::Tensor grad, float roughness, float costheta_cutoff)
+torch::Tensor cubemap_specular_backward(torch::Tensor cubemap, torch::Tensor bounds, torch::Tensor grad, float roughness, float costheta_cutoff)
 {
     CHECK_TENSOR(cubemap, 4, 3);
     CHECK_TENSOR(bounds, 4, 6*4);
@@ -867,7 +867,7 @@ torch::Tensor specular_cubemap_bwd(torch::Tensor cubemap, torch::Tensor bounds, 
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    SpecularCubemapKernelParams p;
+    CubemapSpecularKernelParams p;
     p.roughness = roughness;
     p.costheta_cutoff = costheta_cutoff;
     update_grid(p.gridSize, cubemap);
@@ -887,7 +887,7 @@ torch::Tensor specular_cubemap_bwd(torch::Tensor cubemap, torch::Tensor bounds, 
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)SpecularCubemapBwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)CubemapSpecularBackwardKernel, gridSize, blockSize, args, 0, stream));
 
     return cubemap_grad;
 }
@@ -971,7 +971,7 @@ torch::Tensor specular_cubemap_bwd(torch::Tensor cubemap, torch::Tensor bounds, 
 //------------------------------------------------------------------------
 // transform function
 
-torch::Tensor xfm_fwd(torch::Tensor points, torch::Tensor matrix, bool isPoints, bool fp16)
+torch::Tensor points_transform_forward(torch::Tensor points, torch::Tensor matrix, bool isPoints, bool fp16)
 {
     CHECK_TENSOR(points, 3, 3);
     CHECK_TENSOR(matrix, 3, 4);
@@ -979,7 +979,7 @@ torch::Tensor xfm_fwd(torch::Tensor points, torch::Tensor matrix, bool isPoints,
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    XfmKernelParams p;
+    PointsTransformKernelParams p;
     p.out.fp16 = fp16;
     p.isPoints = isPoints;
     p.gridSize.x = points.size(1);
@@ -1001,17 +1001,17 @@ torch::Tensor xfm_fwd(torch::Tensor points, torch::Tensor matrix, bool isPoints,
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)xfmPointsFwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)PointsTransformFowardKernel, gridSize, blockSize, args, 0, stream));
 
     return out;
 }
 
-torch::Tensor xfm_bwd(torch::Tensor points, torch::Tensor matrix, torch::Tensor grad, bool isPoints)
+torch::Tensor points_transform_backward(torch::Tensor points, torch::Tensor matrix, torch::Tensor grad, bool isPoints)
 {
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
     // Extract input parameters.
-    XfmKernelParams p;
+    PointsTransformKernelParams p;
     p.isPoints = isPoints;
     p.gridSize.x = points.size(1);
     p.gridSize.y = 1;
@@ -1029,14 +1029,14 @@ torch::Tensor xfm_bwd(torch::Tensor points, torch::Tensor matrix, torch::Tensor 
 
     // Launch CUDA kernel.
     void* args[] = { &p };
-    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)xfmPointsBwdKernel, gridSize, blockSize, args, 0, stream));
+    NVDR_CHECK_CUDA_ERROR(cudaLaunchKernel((const void*)PointsTransformBackwardKernel, gridSize, blockSize, args, 0, stream));
 
     return points_grad;
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("prepare_shading_normal_fwd", &prepare_shading_normal_fwd, "prepare_shading_normal_fwd");
-    m.def("prepare_shading_normal_bwd", &prepare_shading_normal_bwd, "prepare_shading_normal_bwd");
+    m.def("shading_normal_forward", &shading_normal_forward, "shading_normal_forward");
+    m.def("shading_normal_backward", &shading_normal_backward, "shading_normal_backward");
     // m.def("lambert_fwd", &lambert_fwd, "lambert_fwd");
     // m.def("lambert_bwd", &lambert_bwd, "lambert_bwd");
     // m.def("frostbite_fwd", &frostbite_fwd, "frostbite_fwd");
@@ -1053,14 +1053,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     // m.def("pbr_specular_bwd", &pbr_specular_bwd, "pbr_specular_bwd");
     // m.def("pbr_bsdf_fwd", &pbr_bsdf_fwd, "pbr_bsdf_fwd");
     // m.def("pbr_bsdf_bwd", &pbr_bsdf_bwd, "pbr_bsdf_bwd");
-    m.def("diffuse_cubemap_fwd", &diffuse_cubemap_fwd, "diffuse_cubemap_fwd");
-    m.def("diffuse_cubemap_bwd", &diffuse_cubemap_bwd, "diffuse_cubemap_bwd");
+    m.def("cubemap_diffuse_forward", &cubemap_diffuse_forward, "cubemap_diffuse_forward");
+    m.def("cubemap_diffuse_backward", &cubemap_diffuse_backward, "cubemap_diffuse_backward");
 
     m.def("specular_bounds", &specular_bounds, "specular_bounds");
-    m.def("specular_cubemap_fwd", &specular_cubemap_fwd, "specular_cubemap_fwd");
-    m.def("specular_cubemap_bwd", &specular_cubemap_bwd, "specular_cubemap_bwd");
+    m.def("cubemap_specular_forward", &cubemap_specular_forward, "cubemap_specular_forward");
+    m.def("cubemap_specular_backward", &cubemap_specular_backward, "cubemap_specular_backward");
     // m.def("image_loss_fwd", &image_loss_fwd, "image_loss_fwd");
     // m.def("image_loss_bwd", &image_loss_bwd, "image_loss_bwd");
-    m.def("xfm_fwd", &xfm_fwd, "xfm_fwd");
-    m.def("xfm_bwd", &xfm_bwd, "xfm_bwd");
+    m.def("points_transform_forward", &points_transform_forward, "points_transform_forward");
+    m.def("points_transform_backward", &points_transform_backward, "points_transform_backward");
 }

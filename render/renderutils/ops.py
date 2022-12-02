@@ -227,14 +227,14 @@ def _get_plugin():
 #----------------------------------------------------------------------------
 # Shading normal setup (bump mapping + bent normals)
 
-class _prepare_shading_normal_func(torch.autograd.Function):
+class shading_normal_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl):
         # ==> pdb.set_trace()
         # two_sided_shading = True
         # opengl = True
         ctx.two_sided_shading, ctx.opengl = two_sided_shading, opengl
-        out = _get_plugin().prepare_shading_normal_fwd(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl, False)
+        out = _get_plugin().shading_normal_forward(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl, False)
         ctx.save_for_backward(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm)
         return out
 
@@ -242,9 +242,9 @@ class _prepare_shading_normal_func(torch.autograd.Function):
     def backward(ctx, dout):
         # ==> pdb.set_trace()
         pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm = ctx.saved_variables
-        return _get_plugin().prepare_shading_normal_bwd(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, dout, ctx.two_sided_shading, ctx.opengl) + (None, None, None)
+        return _get_plugin().shading_normal_backward(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, dout, ctx.two_sided_shading, ctx.opengl) + (None, None, None)
 
-def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading=True, opengl=True, use_python=False):
+def shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading=True, opengl=True, use_python=False):
     '''Takes care of all corner cases and produces a final normal used for shading:
         - Constructs tangent space
         - Flips normal direction based on geometric normal for two sided Shading
@@ -276,10 +276,10 @@ def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng,
     if use_python:
         out = bsdf_prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl)
     else:
-        out = _prepare_shading_normal_func.apply(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl)
+        out = shading_normal_function.apply(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng, geom_nrm, two_sided_shading, opengl)
     
     if torch.is_anomaly_enabled(): # False
-        assert torch.all(torch.isfinite(out)), "Output of prepare_shading_normal contains inf or NaN"
+        assert torch.all(torch.isfinite(out)), "Output of shading_normal contains inf or NaN"
     return out
 
 #----------------------------------------------------------------------------
@@ -463,12 +463,12 @@ def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng,
 #----------------------------------------------------------------------------
 # cubemap filter with filtering across edges
 
-class _diffuse_cubemap_func(torch.autograd.Function):
+class cubemap_diffuse_function(torch.autograd.Function):
     # ==> Here
     @staticmethod
     def forward(ctx, cubemap):
         # ==> pdb.set_trace()
-        out = _get_plugin().diffuse_cubemap_fwd(cubemap)
+        out = _get_plugin().cubemap_diffuse_forward(cubemap)
         ctx.save_for_backward(cubemap)
         return out
 
@@ -476,27 +476,27 @@ class _diffuse_cubemap_func(torch.autograd.Function):
     def backward(ctx, dout):
         # --> pdb.set_trace()       
         cubemap, = ctx.saved_variables
-        cubemap_grad = _get_plugin().diffuse_cubemap_bwd(cubemap, dout)
+        cubemap_grad = _get_plugin().cubemap_diffuse_backward(cubemap, dout)
         return cubemap_grad, None
 
-def diffuse_cubemap(cubemap, use_python=False):
+def cubemap_diffuse(cubemap, use_python=False):
     # cubemap.size() -- [6, 16, 16, 3]
     # use_python = False
     if use_python:
         assert False
     else:
-        out = _diffuse_cubemap_func.apply(cubemap)
+        out = cubemap_diffuse_function.apply(cubemap)
     if torch.is_anomaly_enabled(): # False
-        assert torch.all(torch.isfinite(out)), "Output of diffuse_cubemap contains inf or NaN"
+        assert torch.all(torch.isfinite(out)), "Output of cubemap_diffuse contains inf or NaN"
     return out
 
-class _specular_cubemap(torch.autograd.Function):
+class cubemap_specular_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, cubemap, roughness, costheta_cutoff, bounds):
         # cubemap.size() -- [6, 512, 512, 3]
         # roughness, costheta_cutoff -- (0.08, 0.9997669655912325)
         # bounds.size() -- [6, 512, 512, 24]
-        out = _get_plugin().specular_cubemap_fwd(cubemap, bounds, roughness, costheta_cutoff)
+        out = _get_plugin().cubemap_specular_forward(cubemap, bounds, roughness, costheta_cutoff)
         ctx.save_for_backward(cubemap, bounds)
         ctx.roughness, ctx.theta_cutoff = roughness, costheta_cutoff
         return out
@@ -505,7 +505,7 @@ class _specular_cubemap(torch.autograd.Function):
     def backward(ctx, dout):
         #--> pdb.set_trace()
         cubemap, bounds = ctx.saved_variables
-        cubemap_grad = _get_plugin().specular_cubemap_bwd(cubemap, bounds, dout, ctx.roughness, ctx.theta_cutoff)
+        cubemap_grad = _get_plugin().cubemap_specular_backward(cubemap, bounds, dout, ctx.roughness, ctx.theta_cutoff)
         return cubemap_grad, None, None, None
 
 # Compute the bounds of the GGX NDF lobe to retain "cutoff" percent of the energy
@@ -532,7 +532,7 @@ def __ndfBounds(res, roughness, cutoff):
     return costheta[idx], bounds
 __ndfBoundsDict = {}
 
-def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
+def cubemap_specular(cubemap, roughness, cutoff=0.99, use_python=False):
     # ==> pdb.set_trace()
     # cubemap.size() -- [6, 512, 512, 3]
     # roughness = 0.08
@@ -549,9 +549,9 @@ def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
         #  __ndfBoundsDict.keys() -- dict_keys([(512, 0.08, 0.99)])
         # __ndfBoundsDict[(512, 0.08, 0.99)][0] -- 0.9997669655912325
         # __ndfBoundsDict[(512, 0.08, 0.99)][1].size() -- [6, 512, 512, 24]
-        out = _specular_cubemap.apply(cubemap, roughness, *__ndfBoundsDict[key])
+        out = cubemap_specular_function.apply(cubemap, roughness, *__ndfBoundsDict[key])
     if torch.is_anomaly_enabled():
-        assert torch.all(torch.isfinite(out)), "Output of specular_cubemap contains inf or NaN"
+        assert torch.all(torch.isfinite(out)), "Output of cubemap_specular contains inf or NaN"
     return out[..., 0:3] / out[..., 3:]
 
 #----------------------------------------------------------------------------
@@ -603,19 +603,19 @@ def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
 #----------------------------------------------------------------------------
 # Transform points function
 
-class _xfm_func(torch.autograd.Function):
+class points_transform_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, points, matrix, isPoints):
         ctx.save_for_backward(points, matrix)
         ctx.isPoints = isPoints
-        return _get_plugin().xfm_fwd(points, matrix, isPoints, False)
+        return _get_plugin().points_transform_forward(points, matrix, isPoints, False)
 
     @staticmethod
     def backward(ctx, dout):
         points, matrix = ctx.saved_variables
-        return (_get_plugin().xfm_bwd(points, matrix, dout, ctx.isPoints),) + (None, None, None)
+        return (_get_plugin().points_transform_backward(points, matrix, dout, ctx.isPoints),) + (None, None, None)
 
-def xfm_points(points, matrix, use_python=False): # xxxx8888
+def points_transform(points, matrix, use_python=False): # xxxx8888
     '''Transform points.
     Args:
         points: Tensor containing 3D points with shape [minibatch_size, num_vertices, 3] or [1, num_vertices, 3]
@@ -629,10 +629,10 @@ def xfm_points(points, matrix, use_python=False): # xxxx8888
     if use_python: # False
         out = torch.matmul(torch.nn.functional.pad(points, pad=(0,1), mode='constant', value=1.0), torch.transpose(matrix, 1, 2))
     else:
-        out = _xfm_func.apply(points, matrix, True)
+        out = points_transform_function.apply(points, matrix, True)
 
     if torch.is_anomaly_enabled(): # False
-        assert torch.all(torch.isfinite(out)), "Output of xfm_points contains inf or NaN"
+        assert torch.all(torch.isfinite(out)), "Output of points_transform contains inf or NaN"
     return out
 
 # def xfm_vectors(vectors, matrix, use_python=False):
@@ -649,7 +649,7 @@ def xfm_points(points, matrix, use_python=False): # xxxx8888
 #     if use_python:
 #         out = torch.matmul(torch.nn.functional.pad(vectors, pad=(0,1), mode='constant', value=0.0), torch.transpose(matrix, 1, 2))[..., 0:3].contiguous()
 #     else:
-#         out = _xfm_func.apply(vectors, matrix, False)
+#         out = points_transform_function.apply(vectors, matrix, False)
 
 #     if torch.is_anomaly_enabled():
 #         assert torch.all(torch.isfinite(out)), "Output of xfm_vectors contains inf or NaN"
