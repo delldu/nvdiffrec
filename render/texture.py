@@ -115,40 +115,6 @@ class Texture2D(nn.Module):
             for mip in self.getMips():
                 mip = util.safe_normalize(mip)
 
-########################################################################################################
-# Helper function to create a trainable texture from a regular texture. The trainable weights are 
-# initialized with texture data as an initial guess
-########################################################################################################
-
-# def create_trainable(init, res=None, auto_mipmaps=True, min_max=None):
-#     with torch.no_grad():
-#         if isinstance(init, Texture2D):
-#             assert isinstance(init.data, torch.Tensor)
-#             min_max = init.min_max if min_max is None else min_max
-#             init = init.data
-#         elif isinstance(init, np.ndarray):
-#             init = torch.tensor(init, dtype=torch.float32, device='cuda')
-
-#         # Pad to NHWC if needed
-#         if len(init.shape) == 1: # Extend constant to NHWC tensor
-#             init = init[None, None, None, :]
-#         elif len(init.shape) == 3:
-#             init = init[None, ...]
-
-#         # Scale input to desired resolution.
-#         if res is not None:
-#             init = util.scale_img_nhwc(init, res)
-
-#         pdb.set_trace()
-#         # Genreate custom mipchain
-#         if not auto_mipmaps:
-#             mip_chain = [init.clone().detach().requires_grad_(True)]
-#             while mip_chain[-1].shape[1] > 1 or mip_chain[-1].shape[2] > 1:
-#                 new_size = [max(mip_chain[-1].shape[1] // 2, 1), max(mip_chain[-1].shape[2] // 2, 1)]
-#                 mip_chain += [util.scale_img_nhwc(mip_chain[-1], new_size)]
-#             return Texture2D(mip_chain, min_max=min_max)
-#         else:
-#             return Texture2D(init, min_max=min_max)
 
 ########################################################################################################
 # Convert texture to and from SRGB

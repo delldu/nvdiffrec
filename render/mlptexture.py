@@ -31,6 +31,7 @@ class _MLP(nn.Module):
         
         self.net.apply(self._init_weights)
         
+        # xxxx8888
         if self.loss_scale != 1.0:
             self.net.register_full_backward_hook(lambda module, grad_i, grad_o: (grad_i[0] * self.loss_scale, ))
 
@@ -74,8 +75,8 @@ class MLPTexture3D(nn.Module):
 
         gradient_scaling = 128.0
         self.encoder = tcnn.Encoding(3, enc_cfg)
-        self.encoder.register_full_backward_hook(lambda module, grad_i, grad_o: (grad_i[0] / gradient_scaling, ))
         # xxxx8888
+        self.encoder.register_full_backward_hook(lambda module, grad_i, grad_o: (grad_i[0] / gradient_scaling, ))
 
         # Setup MLP
         mlp_cfg = {

@@ -55,9 +55,6 @@ def srgb_to_rgb(f: torch.Tensor) -> torch.Tensor:
     assert out.shape[0] == f.shape[0] and out.shape[1] == f.shape[1] and out.shape[2] == f.shape[2]
     return out
 
-# def reinhard(f: torch.Tensor) -> torch.Tensor:
-#     return f/(1+f)
-
 #-----------------------------------------------------------------------------------
 # Metrics (taken from jaxNerf source code, in order to replicate their measurements)
 #
@@ -72,21 +69,6 @@ def mse_to_psnr(mse):
 def psnr_to_mse(psnr):
   """Compute MSE given a PSNR (we assume the maximum pixel value is 1)."""
   return np.exp(-0.1 * np.log(10.) * psnr)
-
-#----------------------------------------------------------------------------
-# Displacement texture lookup
-#----------------------------------------------------------------------------
-
-# def get_miplevels(texture: np.ndarray) -> float:
-#     minDim = min(texture.shape[0], texture.shape[1])
-#     return np.floor(np.log2(minDim))
-
-# def tex_2d(tex_map : torch.Tensor, coords : torch.Tensor, filter='nearest') -> torch.Tensor:
-#     tex_map = tex_map[None, ...]    # Add batch dimension
-#     tex_map = tex_map.permute(0, 3, 1, 2) # NHWC -> NCHW
-#     tex = F.grid_sample(tex_map, coords[None, None, ...] * 2 - 1, mode=filter, align_corners=False)
-#     tex = tex.permute(0, 2, 3, 1) # NCHW -> NHWC
-#     return tex[0, 0, ...]
 
 #----------------------------------------------------------------------------
 # Cubemap utility functions
@@ -161,25 +143,6 @@ def avg_pool_nhwc(x  : torch.Tensor, size) -> torch.Tensor:
     return y.permute(0, 2, 3, 1).contiguous() # NCHW -> NHWC
 
 #----------------------------------------------------------------------------
-# Behaves similar to tf.segment_sum
-#----------------------------------------------------------------------------
-
-# def segment_sum(data: torch.Tensor, segment_ids: torch.Tensor) -> torch.Tensor:
-#     num_segments = torch.unique_consecutive(segment_ids).shape[0]
-
-#     # Repeats ids until same dimension as data
-#     if len(segment_ids.shape) == 1:
-#         s = torch.prod(torch.tensor(data.shape[1:], dtype=torch.int64, device='cuda')).long()
-#         segment_ids = segment_ids.repeat_interleave(s).view(segment_ids.shape[0], *data.shape[1:])
-
-#     assert data.shape == segment_ids.shape, "data.shape and segment_ids.shape should be equal"
-
-#     shape = [num_segments] + list(data.shape[1:])
-#     result = torch.zeros(*shape, dtype=torch.float32, device='cuda')
-#     result = result.scatter_add(0, segment_ids, data)
-#     return result
-
-#----------------------------------------------------------------------------
 # Matrix helpers.
 #----------------------------------------------------------------------------
 
@@ -196,31 +159,6 @@ def perspective(fovy=0.7854, aspect=1.0, n=0.1, f=1000.0, device=None):
                          [           0, 1/-y,            0,              0], 
                          [           0,    0, -(f+n)/(f-n), -(2*f*n)/(f-n)], 
                          [           0,    0,           -1,              0]], dtype=torch.float32, device=device)
-
-# Reworked so this matches gluPerspective / glm::perspective, using fovy
-# def perspective_offcenter(fovy, fraction, rx, ry, aspect=1.0, n=0.1, f=1000.0, device=None):
-#     y = np.tan(fovy / 2)
-
-#     # Full frustum
-#     R, L = aspect*y, -aspect*y
-#     T, B = y, -y
-
-#     # Create a randomized sub-frustum
-#     width  = (R-L)*fraction
-#     height = (T-B)*fraction
-#     xstart = (R-L)*rx
-#     ystart = (T-B)*ry
-
-#     l = L + xstart
-#     r = l + width
-#     b = B + ystart
-#     t = b + height
-    
-#     # https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
-#     return torch.tensor([[2/(r-l),        0,  (r+l)/(r-l),              0], 
-#                          [      0, -2/(t-b),  (t+b)/(t-b),              0], 
-#                          [      0,        0, -(f+n)/(f-n), -(2*f*n)/(f-n)], 
-#                          [      0,        0,           -1,              0]], dtype=torch.float32, device=device)
 
 def translate(x, y, z, device=None):
     return torch.tensor([[1, 0, 0, x], 
@@ -297,66 +235,6 @@ def lines_focal(o, d):
     S = torch.sum(d[..., None] @ torch.transpose(d[..., None], 1, 2) - I[None, ...], dim=0)
     C = torch.sum((d[..., None] @ torch.transpose(d[..., None], 1, 2) - I[None, ...]) @ o[..., None], dim=0).squeeze(1)
     return torch.linalg.pinv(S) @ C
-
-#----------------------------------------------------------------------------
-# Cosine sample around a vector N
-#----------------------------------------------------------------------------
-# @torch.no_grad()
-# def cosine_sample(N, size=None):
-#     # construct local frame
-#     N = N/torch.linalg.norm(N)
-
-#     dx0 = torch.tensor([0, N[2], -N[1]], dtype=N.dtype, device=N.device)
-#     dx1 = torch.tensor([-N[2], 0, N[0]], dtype=N.dtype, device=N.device)
-
-#     dx = torch.where(dot(dx0, dx0) > dot(dx1, dx1), dx0, dx1)
-#     #dx = dx0 if np.dot(dx0,dx0) > np.dot(dx1,dx1) else dx1
-#     dx = dx / torch.linalg.norm(dx)
-#     dy = torch.cross(N,dx)
-#     dy = dy / torch.linalg.norm(dy)
-
-#     # cosine sampling in local frame
-#     if size is None:
-#         phi = 2.0 * np.pi * np.random.uniform()
-#         s = np.random.uniform()
-#     else:
-#         phi = 2.0 * np.pi * torch.rand(*size, 1, dtype=N.dtype, device=N.device)
-#         s = torch.rand(*size, 1, dtype=N.dtype, device=N.device)
-#     costheta = np.sqrt(s)
-#     sintheta = np.sqrt(1.0 - s)
-
-#     # cartesian vector in local space
-#     x = np.cos(phi)*sintheta
-#     y = np.sin(phi)*sintheta
-#     z = costheta
-
-#     # local to world
-#     return dx*x + dy*y + N*z
-
-#----------------------------------------------------------------------------
-# Bilinear downsample by 2x.
-#----------------------------------------------------------------------------
-
-# def bilinear_downsample(x : torch.tensor) -> torch.Tensor:
-#     w = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype=torch.float32, device=x.device) / 64.0
-#     w = w.expand(x.shape[-1], 1, 4, 4) 
-#     x = F.conv2d(x.permute(0, 3, 1, 2), w, padding=1, stride=2, groups=x.shape[-1])
-#     return x.permute(0, 2, 3, 1)
-
-#----------------------------------------------------------------------------
-# Bilinear downsample log(spp) steps
-#----------------------------------------------------------------------------
-
-# def bilinear_downsample(x : torch.tensor, spp) -> torch.Tensor:
-#     w = torch.tensor([[1, 3, 3, 1], [3, 9, 9, 3], [3, 9, 9, 3], [1, 3, 3, 1]], dtype=torch.float32, device=x.device) / 64.0
-#     g = x.shape[-1]
-#     w = w.expand(g, 1, 4, 4) 
-#     x = x.permute(0, 3, 1, 2) # NHWC -> NCHW
-#     steps = int(np.log2(spp))
-#     for _ in range(steps):
-#         xp = F.pad(x, (1,1,1,1), mode='replicate')
-#         x = F.conv2d(xp, w, padding=0, stride=2, groups=g)
-#     return x.permute(0, 2, 3, 1).contiguous() # NCHW -> NHWC
 
 #----------------------------------------------------------------------------
 # Singleton initialize GLFW

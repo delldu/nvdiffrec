@@ -57,7 +57,7 @@ class EnvironmentLight(nn.Module):
         super(EnvironmentLight, self).__init__()
         self.mtx = None      
         self.base = nn.Parameter(base.clone().detach(), requires_grad=True)
-        self.register_parameter('env_base', self.base) # could not been detected !!!
+        self.register_parameter('env_base', self.base) # xxxx8888 !!!
         # self.base.size() -- [6, 512, 512, 3]
 
     # def xfm(self, mtx):
