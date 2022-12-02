@@ -11,6 +11,6 @@
     "envmap": "data/irrmaps/aerodynamics_workshop_2k.hdr",
     "env_scale" : 2.0,
     "background": "white",
-    "validate" : false,
+    "validate" : true,
     "out_dir": "bob"
 }

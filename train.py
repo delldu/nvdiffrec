@@ -168,7 +168,6 @@ def validate(glctx, geometry, opt_material, lgt, dataset_validate, out_dir, FLAG
     dataloader_validate = torch.utils.data.DataLoader(dataset_validate, batch_size=1, collate_fn=dataset_validate.collate)
 
     os.makedirs(out_dir, exist_ok=True)
-    pdb.set_trace()
 
     with open(os.path.join(out_dir, 'metrics.txt'), 'w') as fout:
         fout.write('ID, MSE, PSNR\n')
