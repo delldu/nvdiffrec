@@ -12,4 +12,4 @@
 
 
 from .ops import xfm_points, diffuse_cubemap, specular_cubemap, prepare_shading_normal
-__all__ = ["xfm_points", "diffuse_cubemap","specular_cubemap", "prepare_shading_normal"]
+__all__ = ["xfm_points", "diffuse_cubemap", "specular_cubemap", "prepare_shading_normal"]

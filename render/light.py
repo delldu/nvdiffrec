@@ -37,6 +37,8 @@ class cubemap_mip(torch.autograd.Function):
                                     torch.linspace(-1.0 + 1.0 / res, 1.0 - 1.0 / res, res, device="cuda"))
 
             v = util.safe_normalize(util.cube_to_dir(s, gx, gy))
+
+            # Perform texture sampling on dout
             out[s, ...] = dr.texture(dout[None, ...] * 0.25, v[None, ...].contiguous(), filter_mode='linear', boundary_mode='cube')
         return out
 
@@ -114,6 +116,7 @@ class EnvironmentLight(torch.nn.Module):
             nrmvec  = ru.xfm_vectors(nrmvec.view(nrmvec.shape[0], nrmvec.shape[1] * nrmvec.shape[2], nrmvec.shape[3]), mtx).view(*nrmvec.shape)
 
         # Diffuse lookup
+        # Perform texture sampling on self.diffuse
         diffuse = dr.texture(self.diffuse[None, ...], nrmvec.contiguous(), filter_mode='linear', boundary_mode='cube')
         shaded_col = diffuse * diff_col
 
@@ -124,6 +127,7 @@ class EnvironmentLight(torch.nn.Module):
             if not hasattr(self, '_FG_LUT'): # True
                 self._FG_LUT = torch.as_tensor(np.fromfile('data/irrmaps/bsdf_256_256.bin', dtype=np.float32).reshape(1, 256, 256, 2), dtype=torch.float32, device='cuda')
             # self._FG_LUT.size() -- [1, 256, 256, 2]
+            # Perform texture sampling on self._FG_LUT
             fg_lookup = dr.texture(self._FG_LUT, fg_uv, filter_mode='linear', boundary_mode='clamp')
 
             # Roughness adjusted specular env lookup

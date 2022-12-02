@@ -46,6 +46,31 @@ class DLMesh(torch.nn.Module):
     def render(self, glctx, target, lgt, opt_material, bsdf=None):
         opt_mesh = self.getMesh(opt_material)
         # self.FLAGS.layers -- 1
+        # (Pdb) opt_mesh.v_pos.size() -- [5238, 3]
+        # (Pdb) opt_mesh.v_nrm.size() -- [5238, 3]
+        # (Pdb) opt_mesh.v_tng.size() -- [5238, 3]
+        # (Pdb) opt_mesh.v_tex.size() -- [7023, 2]
+
+        # (Pdb) opt_mesh.t_pos_idx.size() -- [10472, 3]
+        # (Pdb) opt_mesh.t_tex_idx.size() -- [10472, 3]
+        # (Pdb) opt_mesh.t_tng_idx.size() -- [10472, 3]
+        # (Pdb) opt_mesh.t_nrm_idx.size() -- [10472, 3]
+
+        # target['mvp'].size() -- [1, 4, 4]
+        # (Pdb) target['mvp']
+        # tensor([[[ 2.4142,  0.0000,  0.0000,  0.0000],
+        #          [ 0.0000, -2.2236,  0.9401,  0.0000],
+        #          [ 0.0000, -0.3895, -0.9212,  2.8006],
+        #          [ 0.0000, -0.3894, -0.9211,  3.0000]]], device='cuda:0')
+
+        # (Pdb) target['campos'].size() -- [1, 3]
+        # (Pdb) target['campos']
+        # tensor([[-0.0000, 1.1683, 2.7632]], device='cuda:0')
+
+        # target['resolution'] -- [512, 512]
+        # (Pdb) target['background'].size() -- [1, 512, 512, 3]
+        # (Pdb) target['background'].min(), max() -- 1.0, 1.0
+
         return render.render_mesh(glctx, opt_mesh, target['mvp'], target['campos'], lgt, target['resolution'], spp=target['spp'], 
                                     num_layers=self.FLAGS.layers, msaa=True, background=target['background'], bsdf=bsdf)
 

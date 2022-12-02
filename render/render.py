@@ -253,7 +253,7 @@ def render_mesh(
         for buffers, rast in reversed(layers):
             alpha = (rast[..., -1:] > 0).float() * buffers[key][..., -1:]
             accum = torch.lerp(accum, torch.cat((buffers[key][..., :-1], torch.ones_like(buffers[key][..., -1:])), dim=-1), alpha)
-            if antialias:
+            if antialias: # True for shaded
                 accum = dr.antialias(accum.contiguous(), rast, v_pos_clip, mesh.t_pos_idx.int())
         return accum
 
@@ -271,14 +271,21 @@ def render_mesh(
 
     # Render all layers front-to-back
     layers = []
+    # v_pos_clip.size() -- [1, 5344, 4]
+    # mesh.t_pos_idx.size() -- [10688, 3]
+    # full_res -- [512, 512]
+    # proto type: nvdiffrast.torch.DepthPeeler(glctx, pos, tri, resolution)
     with dr.DepthPeeler(ctx, v_pos_clip, mesh.t_pos_idx.int(), full_res) as peeler:
-        for _ in range(num_layers):
+        for _ in range(num_layers): # num_layers -- 1
             rast, db = peeler.rasterize_next_layer()
+            # rast.size() -- [1, 512, 512, 4]
+            # db.size() -- [1, 512, 512, 4]
+            # resolution, spp, msaa, bsdf -- ([512, 512], 1, True, None)
             layers += [(render_layer(rast, db, mesh, view_pos, lgt, resolution, spp, msaa, bsdf), rast)]
 
     # Setup background
-    if background is not None:
-        if spp > 1:
+    if background is not None: # False ?
+        if spp > 1: # False for spp == 1
             background = util.scale_img_nhwc(background, full_res, mag='nearest', min='nearest')
         background = torch.cat((background, torch.zeros_like(background[..., 0:1])), dim=-1)
     else:
@@ -287,6 +294,7 @@ def render_mesh(
     # Composite layers front-to-back
     out_buffers = {}
     for key in layers[0][0].keys():
+        # layers[0][0].keys() -- dict_keys(['shaded', 'kd_grad', 'occlusion'])
         if key == 'shaded':
             accum = composite_buffer(key, layers, background, True)
         else:

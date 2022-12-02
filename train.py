@@ -48,6 +48,7 @@ RADIUS = 3.0
 
 @torch.no_grad()
 def prepare_batch(target, bg_type='black'):
+    assert bg_type in ["random", "white"]
     # print(f"prepare_batch: target shape -- {target['img'].shape}, bg_type -- {bg_type}")
     # target shape -- torch.Size([4, 512, 512, 4]), bg_type -- random/white
     assert len(target['img'].shape) == 4, "Image shape should be [n, h, w, c]"

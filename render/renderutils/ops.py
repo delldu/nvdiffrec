@@ -57,13 +57,22 @@ def _get_plugin():
     # List of sources.
     source_files = [
         'c_src/mesh.cu',
-        'c_src/loss.cu',
-        'c_src/bsdf.cu',
+        # 'c_src/loss.cu',
+        # 'c_src/bsdf.cu',
         'c_src/normal.cu',
         'c_src/cubemap.cu',
         'c_src/common.cpp',
         'c_src/torch_bindings.cpp'
     ]
+
+    # source_files ====>>>>> 
+    # ['c_src/mesh.cu',
+    #  'c_src/loss.cu', 
+    #  'c_src/bsdf.cu',
+    #  'c_src/normal.cu', 
+    #  'c_src/cubemap.cu',
+    #  'c_src/common.cpp',
+    #  'c_src/torch_bindings.cpp']    
 
     # Some containers set this to contain old architectures that won't compile. We only need the one installed in the machine.
     os.environ['TORCH_CUDA_ARCH_LIST'] = ''
@@ -71,6 +80,7 @@ def _get_plugin():
     # Try to detect if a stray lock file is left in cache directory and show a warning. This sometimes happens on Windows if the build is interrupted at just the right moment.
     try:
         lock_fn = os.path.join(torch.utils.cpp_extension._get_build_directory('renderutils_plugin', False), 'lock')
+        # lock_fn -- '/home/dell/.cache/torch_extensions/renderutils_plugin/lock'
         if os.path.exists(lock_fn):
             print("Warning: Lock file exists in build directory: '%s'" % lock_fn)
     except:
@@ -81,9 +91,21 @@ def _get_plugin():
     torch.utils.cpp_extension.load(name='renderutils_plugin', sources=source_paths, extra_cflags=opts,
          extra_cuda_cflags=opts, extra_ldflags=ldflags, with_cuda=True, verbose=True)
 
+    # opts -- ['-DNVDR_TORCH']
+
+    # ldflags --
+    #     ['-lcuda', '-lnvrtc', 
+    # '-L/home/dell/anaconda3/envs/python39/lib/python3.9/site-packages/torch/lib', 
+    #     '-lc10', '-lc10_cuda', '-ltorch_cpu', '-ltorch_cuda', '-ltorch', '-ltorch_python', 
+    # '-L/usr/local/cuda-10.2/lib64', '-lcudart']
+
     # Import, cache, and return the compiled module.
     import renderutils_plugin
     _cached_plugin = renderutils_plugin
+
+    # _cached_plugin -- <module 'renderutils_plugin' 
+    #   from '/home/dell/.cache/torch_extensions/renderutils_plugin/renderutils_plugin.so'>
+
     return _cached_plugin
 
 #----------------------------------------------------------------------------
@@ -243,7 +265,11 @@ def prepare_shading_normal(pos, view_pos, perturbed_nrm, smooth_nrm, smooth_tng,
         use_python: Use PyTorch implementation (for validation)
     Returns:
         Final shading normal
-    '''    
+    '''
+    # two_sided_shading = True
+    # opengl = True
+    # use_python = False
+
     if perturbed_nrm is None: # True
         perturbed_nrm = torch.tensor([0, 0, 1], dtype=torch.float32, device='cuda', requires_grad=False)[None, None, None, ...]
     
@@ -520,6 +546,9 @@ def specular_cubemap(cubemap, roughness, cutoff=0.99, use_python=False):
         key = (cubemap.shape[1], roughness, cutoff)
         if key not in __ndfBoundsDict:
             __ndfBoundsDict[key] = __ndfBounds(*key)
+        #  __ndfBoundsDict.keys() -- dict_keys([(512, 0.08, 0.99)])
+        # __ndfBoundsDict[(512, 0.08, 0.99)][0] -- 0.9997669655912325
+        # __ndfBoundsDict[(512, 0.08, 0.99)][1].size() -- [6, 512, 512, 24]
         out = _specular_cubemap.apply(cubemap, roughness, *__ndfBoundsDict[key])
     if torch.is_anomaly_enabled():
         assert torch.all(torch.isfinite(out)), "Output of specular_cubemap contains inf or NaN"
@@ -586,7 +615,7 @@ class _xfm_func(torch.autograd.Function):
         points, matrix = ctx.saved_variables
         return (_get_plugin().xfm_bwd(points, matrix, dout, ctx.isPoints),) + (None, None, None)
 
-def xfm_points(points, matrix, use_python=False):
+def xfm_points(points, matrix, use_python=False): # xxxx8888
     '''Transform points.
     Args:
         points: Tensor containing 3D points with shape [minibatch_size, num_vertices, 3] or [1, num_vertices, 3]

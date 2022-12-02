@@ -210,7 +210,16 @@ class DMTetGeometry(torch.nn.Module):
 
     def getMesh(self, material):
         # Run DM tet to get a base mesh
+
+        # self.grid_res -- 64
+        # self.verts.size() -- [36562, 3]
+        # self.sdf.size() -- [36562]
+        # self.deform.size() -- [36562, 3]
+
+
         v_deformed = self.verts + 2 / (self.grid_res * 2) * torch.tanh(self.deform)
+
+        # self.indices.size() -- [192492, 4]
         verts, faces, uvs, uv_idx = self.marching_tets(v_deformed, self.sdf, self.indices)
         imesh = mesh.Mesh(verts, faces, v_tex=uvs, t_tex_idx=uv_idx, material=material)
 

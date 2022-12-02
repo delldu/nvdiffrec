@@ -59,7 +59,7 @@ __device__ void bwdPerturbNormal(const vec3f perturbed_nrm, const vec3f smooth_n
 }
 
 //------------------------------------------------------------------------
-#define bent_nrm_eps 0.001f
+// #define bent_nrm_eps 0.001f
 
 __device__ vec3f fwdBendNormal(const vec3f view_vec, const vec3f smooth_nrm, const vec3f geom_nrm)
 {
