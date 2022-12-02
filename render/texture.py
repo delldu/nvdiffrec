@@ -10,6 +10,7 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 import nvdiffrast.torch as dr
 
 from . import util
@@ -19,7 +20,7 @@ import pdb
 # Smooth pooling / mip computation with linear gradient upscaling
 ######################################################################################
 
-class texture2d_mip(torch.autograd.Function):
+class texture2d_mip_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, texture):
         return util.avg_pool_nhwc(texture, (2,2))
@@ -41,7 +42,7 @@ class texture2d_mip(torch.autograd.Function):
 # - A list of 3D tensors (full custom mip hierarchy)
 ########################################################################################################
 
-class Texture2D(torch.nn.Module):
+class Texture2D(nn.Module):
      # Initializes a texture from image data.
      # Input can be constant value (1D array) or texture (3D array) or mip hierarchy (list of 3d arrays)
     def __init__(self, init, min_max=None):
@@ -55,13 +56,13 @@ class Texture2D(torch.nn.Module):
             init = init[0]
 
         if isinstance(init, list):
-            self.data = list(torch.nn.Parameter(mip.clone().detach(), requires_grad=True) for mip in init)
+            self.data = list(nn.Parameter(mip.clone().detach(), requires_grad=True) for mip in init)
         elif len(init.shape) == 4:
-            self.data = torch.nn.Parameter(init.clone().detach(), requires_grad=True)
+            self.data = nn.Parameter(init.clone().detach(), requires_grad=True)
         elif len(init.shape) == 3:
-            self.data = torch.nn.Parameter(init[None, ...].clone().detach(), requires_grad=True)
+            self.data = nn.Parameter(init[None, ...].clone().detach(), requires_grad=True)
         elif len(init.shape) == 1: # True
-            self.data = torch.nn.Parameter(init[None, None, None, :].clone().detach(), requires_grad=True) # Convert constant to 1x1 tensor
+            self.data = nn.Parameter(init[None, None, None, :].clone().detach(), requires_grad=True) # Convert constant to 1x1 tensor
             # self.data.size() -- [1, 1, 1, 3]
         else:
             assert False, "Invalid texture object"
@@ -82,7 +83,7 @@ class Texture2D(torch.nn.Module):
             if self.data.shape[1] > 1 and self.data.shape[2] > 1: # False
                 mips = [self.data]
                 while mips[-1].shape[1] > 1 and mips[-1].shape[2] > 1:
-                    mips += [texture2d_mip.apply(mips[-1])]
+                    mips += [texture2d_mip_function.apply(mips[-1])]
                 out = dr.texture(mips[0], texc, texc_deriv, mip=mips[1:], filter_mode=filter_mode)
             else:
                 out = dr.texture(self.data, texc, texc_deriv, filter_mode=filter_mode) # === !!!
@@ -119,35 +120,35 @@ class Texture2D(torch.nn.Module):
 # initialized with texture data as an initial guess
 ########################################################################################################
 
-def create_trainable(init, res=None, auto_mipmaps=True, min_max=None):
-    with torch.no_grad():
-        if isinstance(init, Texture2D):
-            assert isinstance(init.data, torch.Tensor)
-            min_max = init.min_max if min_max is None else min_max
-            init = init.data
-        elif isinstance(init, np.ndarray):
-            init = torch.tensor(init, dtype=torch.float32, device='cuda')
+# def create_trainable(init, res=None, auto_mipmaps=True, min_max=None):
+#     with torch.no_grad():
+#         if isinstance(init, Texture2D):
+#             assert isinstance(init.data, torch.Tensor)
+#             min_max = init.min_max if min_max is None else min_max
+#             init = init.data
+#         elif isinstance(init, np.ndarray):
+#             init = torch.tensor(init, dtype=torch.float32, device='cuda')
 
-        # Pad to NHWC if needed
-        if len(init.shape) == 1: # Extend constant to NHWC tensor
-            init = init[None, None, None, :]
-        elif len(init.shape) == 3:
-            init = init[None, ...]
+#         # Pad to NHWC if needed
+#         if len(init.shape) == 1: # Extend constant to NHWC tensor
+#             init = init[None, None, None, :]
+#         elif len(init.shape) == 3:
+#             init = init[None, ...]
 
-        # Scale input to desired resolution.
-        if res is not None:
-            init = util.scale_img_nhwc(init, res)
+#         # Scale input to desired resolution.
+#         if res is not None:
+#             init = util.scale_img_nhwc(init, res)
 
-        pdb.set_trace()
-        # Genreate custom mipchain
-        if not auto_mipmaps:
-            mip_chain = [init.clone().detach().requires_grad_(True)]
-            while mip_chain[-1].shape[1] > 1 or mip_chain[-1].shape[2] > 1:
-                new_size = [max(mip_chain[-1].shape[1] // 2, 1), max(mip_chain[-1].shape[2] // 2, 1)]
-                mip_chain += [util.scale_img_nhwc(mip_chain[-1], new_size)]
-            return Texture2D(mip_chain, min_max=min_max)
-        else:
-            return Texture2D(init, min_max=min_max)
+#         pdb.set_trace()
+#         # Genreate custom mipchain
+#         if not auto_mipmaps:
+#             mip_chain = [init.clone().detach().requires_grad_(True)]
+#             while mip_chain[-1].shape[1] > 1 or mip_chain[-1].shape[2] > 1:
+#                 new_size = [max(mip_chain[-1].shape[1] // 2, 1), max(mip_chain[-1].shape[2] // 2, 1)]
+#                 mip_chain += [util.scale_img_nhwc(mip_chain[-1], new_size)]
+#             return Texture2D(mip_chain, min_max=min_max)
+#         else:
+#             return Texture2D(init, min_max=min_max)
 
 ########################################################################################################
 # Convert texture to and from SRGB

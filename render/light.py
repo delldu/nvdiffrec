@@ -10,6 +10,7 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 import nvdiffrast.torch as dr
 
 from . import util
@@ -20,7 +21,7 @@ import pdb
 # Utility functions
 ######################################################################################
 
-class cubemap_mip(torch.autograd.Function):
+class cubemap_mip_function(torch.autograd.Function):
     @staticmethod
     def forward(ctx, cubemap):
         return util.avg_pool_nhwc(cubemap, (2,2))
@@ -46,7 +47,7 @@ class cubemap_mip(torch.autograd.Function):
 # Split-sum environment map light source with automatic mipmap generation
 ######################################################################################
 
-class EnvironmentLight(torch.nn.Module):
+class EnvironmentLight(nn.Module):
     LIGHT_MIN_RES = 16
 
     MIN_ROUGHNESS = 0.08
@@ -55,8 +56,8 @@ class EnvironmentLight(torch.nn.Module):
     def __init__(self, base):
         super(EnvironmentLight, self).__init__()
         self.mtx = None      
-        self.base = torch.nn.Parameter(base.clone().detach(), requires_grad=True)
-        self.register_parameter('env_base', self.base)
+        self.base = nn.Parameter(base.clone().detach(), requires_grad=True)
+        self.register_parameter('env_base', self.base) # could not been detected !!!
         # self.base.size() -- [6, 512, 512, 3]
 
     # def xfm(self, mtx):
@@ -78,7 +79,7 @@ class EnvironmentLight(torch.nn.Module):
     def build_mips(self, cutoff=0.99):
         self.specular = [self.base] # self.base.size() -- [6, 512, 512, 3]
         while self.specular[-1].shape[1] > self.LIGHT_MIN_RES:
-            self.specular += [cubemap_mip.apply(self.specular[-1])]
+            self.specular += [cubemap_mip_function.apply(self.specular[-1])]
 
         self.diffuse = ru.diffuse_cubemap(self.specular[-1]) # self.specular[-1].size() -- [6, 16, 16, 3]
 

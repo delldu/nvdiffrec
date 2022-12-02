@@ -10,6 +10,8 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from . import util
 from . import texture
@@ -17,9 +19,9 @@ import pdb
 
 ######################################################################################
 # Wrapper to make materials behave like a python dict, but register textures as 
-# torch.nn.Module parameters.
+# nn.Module parameters.
 ######################################################################################
-class Material(torch.nn.Module):
+class Material(nn.Module):
     def __init__(self, mat_dict):
         super(Material, self).__init__()
         self.mat_keys = set()
@@ -138,9 +140,9 @@ def save_mtl(fn, material):
 # Merge multiple materials into a single uber-material
 ######################################################################################
 
-def _upscale_replicate(x, full_res):
+def upscale_replicate(x, full_res):
     x = x.permute(0, 3, 1, 2)
-    x = torch.nn.functional.pad(x, (0, full_res[1] - x.shape[3], 0, full_res[0] - x.shape[2]), 'replicate')
+    x = F.pad(x, (0, full_res[1] - x.shape[3], 0, full_res[0] - x.shape[2]), 'replicate')
     return x.permute(0, 2, 3, 1).contiguous()
 
 def merge_materials(materials, texcoords, tfaces, mfaces):
@@ -170,7 +172,7 @@ def merge_materials(materials, texcoords, tfaces, mfaces):
     for tex in textures:
         if tex in materials[0]:
             tex_data = torch.cat(tuple(util.scale_img_nhwc(mat[tex].data, tuple(max_res)) for mat in materials), dim=2) # Lay out all textures horizontally, NHWC so dim2 is x
-            tex_data = _upscale_replicate(tex_data, full_res)
+            tex_data = upscale_replicate(tex_data, full_res)
             uber_material[tex] = texture.Texture2D(tex_data)
 
     # Compute scaling values for used / unused texture area

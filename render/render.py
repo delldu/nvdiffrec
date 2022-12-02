@@ -68,7 +68,7 @@ def shade(
         assert all_tex.shape[-1] == 9 or all_tex.shape[-1] == 10, "Combined kd_ks_normal must be 9 or 10 channels"
         kd, ks, perturbed_nrm = all_tex[..., :-6], all_tex[..., -6:-3], all_tex[..., -3:]
         # Compute albedo (kd) gradient, used for material regularizer
-        kd_grad    = torch.sum(torch.abs(all_tex_jitter[..., :-6] - all_tex[..., :-6]), dim=-1, keepdim=True) / 3
+        kd_grad = torch.sum(torch.abs(all_tex_jitter[..., :-6] - all_tex[..., :-6]), dim=-1, keepdim=True) / 3
     else:
         # ==> pdb.set_trace()
         kd_jitter  = material['kd'].sample(gb_texc + torch.normal(mean=0, std=0.005, size=gb_texc.shape, device="cuda"), gb_texc_deriv)
@@ -76,7 +76,7 @@ def shade(
         ks = material['ks'].sample(gb_texc, gb_texc_deriv)[..., 0:3] # skip alpha
         if 'normal' in material:
             perturbed_nrm = material['normal'].sample(gb_texc, gb_texc_deriv)
-        kd_grad    = torch.sum(torch.abs(kd_jitter[..., 0:3] - kd[..., 0:3]), dim=-1, keepdim=True) / 3
+        kd_grad = torch.sum(torch.abs(kd_jitter[..., 0:3] - kd[..., 0:3]), dim=-1, keepdim=True) / 3
 
     # Separate kd into alpha and color, default alpha = 1
     alpha = kd[..., 3:4] if kd.shape[-1] == 4 else torch.ones_like(kd[..., 0:1]) # [1, 512, 512, 1]
@@ -348,4 +348,5 @@ def render_uv(ctx, mesh, resolution, mlp_texture):
     # rast.size() -- [1, 1024, 1024, 4]
     # all_tex.size() -- [1, 1024, 1024, 9]
     # perturbed_nrm.size() -- [1, 1024, 1024, 3]
+    # mask, kd, ks, normal
     return (rast[..., -1:] > 0).float(), all_tex[..., :-6], all_tex[..., -6:-3], util.safe_normalize(perturbed_nrm)

@@ -8,22 +8,26 @@
 # its affiliates is strictly prohibited.
 
 import torch
-import tinycudann as tcnn
+import torch.nn as nn
+import tinycudann as tcnn # xxxx8888
 import numpy as np
+import pdb
 
 #######################################################################################################################################################
 # Small MLP using PyTorch primitives, internal helper class
 #######################################################################################################################################################
 
-class _MLP(torch.nn.Module):
+class _MLP(nn.Module):
     def __init__(self, cfg, loss_scale=1.0):
         super(_MLP, self).__init__()
+        # cfg = {'n_input_dims': 32, 'n_output_dims': 9, 'n_hidden_layers': 2, 'n_neurons': 32}
+        # loss_scale = 128.0
         self.loss_scale = loss_scale
-        net = (torch.nn.Linear(cfg['n_input_dims'], cfg['n_neurons'], bias=False), torch.nn.ReLU())
+        net = (nn.Linear(cfg['n_input_dims'], cfg['n_neurons'], bias=False), nn.ReLU())
         for i in range(cfg['n_hidden_layers']-1):
-            net = net + (torch.nn.Linear(cfg['n_neurons'], cfg['n_neurons'], bias=False), torch.nn.ReLU())
-        net = net + (torch.nn.Linear(cfg['n_neurons'], cfg['n_output_dims'], bias=False),)
-        self.net = torch.nn.Sequential(*net).cuda()
+            net = net + (nn.Linear(cfg['n_neurons'], cfg['n_neurons'], bias=False), nn.ReLU())
+        net = net + (nn.Linear(cfg['n_neurons'], cfg['n_output_dims'], bias=False),)
+        self.net = nn.Sequential(*net).cuda()
         
         self.net.apply(self._init_weights)
         
@@ -35,8 +39,8 @@ class _MLP(torch.nn.Module):
 
     @staticmethod
     def _init_weights(m):
-        if type(m) == torch.nn.Linear:
-            torch.nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
+        if type(m) == nn.Linear:
+            nn.init.kaiming_uniform_(m.weight, nonlinearity='relu')
             if hasattr(m.bias, 'data'):
                 m.bias.data.fill_(0.0)
 
@@ -44,7 +48,7 @@ class _MLP(torch.nn.Module):
 # Outward visible MLP class
 #######################################################################################################################################################
 
-class MLPTexture3D(torch.nn.Module):
+class MLPTexture3D(nn.Module):
     def __init__(self, AABB, channels = 3, internal_dims = 32, hidden = 2, min_max = None):
         super(MLPTexture3D, self).__init__()
         # ===> Here !!!
@@ -71,6 +75,7 @@ class MLPTexture3D(torch.nn.Module):
         gradient_scaling = 128.0
         self.encoder = tcnn.Encoding(3, enc_cfg)
         self.encoder.register_full_backward_hook(lambda module, grad_i, grad_o: (grad_i[0] / gradient_scaling, ))
+        # xxxx8888
 
         # Setup MLP
         mlp_cfg = {

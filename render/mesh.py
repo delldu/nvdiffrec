@@ -74,7 +74,7 @@ class Mesh:
         return out
 
 ######################################################################################
-# Mesh loeading helper
+# Mesh loading helper
 ######################################################################################
 
 def load_mesh(filename, mtl_override=None):
@@ -149,23 +149,23 @@ def compute_edge_to_face_mapping(attr_idx, return_inverse=False):
 ######################################################################################
 # Align base mesh to reference mesh:move & rescale to match bounding boxes.
 ######################################################################################
-def unit_size(mesh):
-    with torch.no_grad():
-        vmin, vmax = aabb(mesh)
-        scale = 2 / torch.max(vmax - vmin).item()
-        v_pos = mesh.v_pos - (vmax + vmin) / 2 # Center mesh on origin
-        v_pos = v_pos * scale                  # Rescale to unit size
+# def unit_size(mesh):
+#     with torch.no_grad():
+#         vmin, vmax = aabb(mesh)
+#         scale = 2 / torch.max(vmax - vmin).item()
+#         v_pos = mesh.v_pos - (vmax + vmin) / 2 # Center mesh on origin
+#         v_pos = v_pos * scale                  # Rescale to unit size
 
-        return Mesh(v_pos, base=mesh)
+#         return Mesh(v_pos, base=mesh)
 
 ######################################################################################
 # Center & scale mesh for rendering
 ######################################################################################
-def center_by_reference(base_mesh, ref_aabb, scale):
-    center = (ref_aabb[0] + ref_aabb[1]) * 0.5
-    scale = scale / torch.max(ref_aabb[1] - ref_aabb[0]).item()
-    v_pos = (base_mesh.v_pos - center[None, ...]) * scale
-    return Mesh(v_pos, base=base_mesh)
+# def center_by_reference(base_mesh, ref_aabb, scale):
+#     center = (ref_aabb[0] + ref_aabb[1]) * 0.5
+#     scale = scale / torch.max(ref_aabb[1] - ref_aabb[0]).item()
+#     v_pos = (base_mesh.v_pos - center[None, ...]) * scale
+#     return Mesh(v_pos, base=base_mesh)
 
 ######################################################################################
 # Simple smooth vertex normal computation

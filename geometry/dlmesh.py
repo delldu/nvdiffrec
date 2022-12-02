@@ -8,6 +8,8 @@
 # its affiliates is strictly prohibited.
 
 import torch
+import torch.nn as nn
+
 import torch.nn.functional as F
 from render import mesh
 from render import render
@@ -18,16 +20,16 @@ import pdb
 #  Geometry interface
 ###############################################################################
 
-class DLMesh(torch.nn.Module):
+class DLMesh(nn.Module):
     def __init__(self, initial_guess, FLAGS):
         super(DLMesh, self).__init__()
         self.FLAGS = FLAGS
         self.initial_guess = initial_guess
-        self.mesh          = initial_guess.clone()
+        self.mesh = initial_guess.clone()
         print("Base mesh has %d triangles and %d vertices." % (self.mesh.t_pos_idx.shape[0], self.mesh.v_pos.shape[0]))
         
-        self.mesh.v_pos = torch.nn.Parameter(self.mesh.v_pos, requires_grad=True)
-        self.register_parameter('vertex_pos', self.mesh.v_pos)
+        self.mesh.v_pos = nn.Parameter(self.mesh.v_pos, requires_grad=True)
+        self.register_parameter('vertex_pos', self.mesh.v_pos) # could not been detected !!!
         
     @torch.no_grad()
     def getAABB(self):
