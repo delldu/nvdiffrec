@@ -84,7 +84,7 @@ def xatlas_uvmap(glctx, geometry, mat, FLAGS):
     # glctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7fe9225b3eb0>
     # geometry = DMTetGeometry()
     # mat = Material(
-    #   (kd_ks_normal): MLPTexture3D(
+    #   (kd_ks_normal): Texture(
     #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
     #     (net): _MLP()
     #   )
@@ -147,10 +147,10 @@ def initial_guess_material(geometry, FLAGS):
     # geometry.getAABB()
     # tensor([-1.0500, -1.0500, -1.0500], device='cuda:0'), 
     # tensor([1.0500, 1.0500, 1.0500], device='cuda:0')
-    mlp_map_opt = mlptexture.MLPTexture3D(geometry.getAABB(), channels=9, min_max=[mlp_min, mlp_max])
+    mlp_map_opt = mlptexture.Texture(geometry.getAABB(), channels=9, min_max=[mlp_min, mlp_max])
 
     # mlp_map_opt
-    # MLPTexture3D(
+    # Texture(
     #   (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, 
     #         dtype=torch.float16, hyperparams={'base_resolution': 16, 
     #         'interpolation': 'Linear', 'log2_hashmap_size': 19, 
@@ -243,7 +243,7 @@ class Trainer(torch.nn.Module):
         # geometry = DMTetGeometry()
         # lgt = EnvironmentLight()
         # mat = Material(
-        #   (kd_ks_normal): MLPTexture3D(
+        #   (kd_ks_normal): Texture(
         #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
         #     (net): _MLP(
         #       (net): Sequential(
@@ -283,7 +283,7 @@ def optimize_mesh(
     # glctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7fb240aad580>
     # geometry = DMTetGeometry()
     # opt_material = Material(
-    #   (kd_ks_normal): MLPTexture3D(
+    #   (kd_ks_normal): Texture(
     #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
     #     (net): _MLP(
     #       (net): Sequential(

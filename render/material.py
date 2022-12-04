@@ -37,7 +37,7 @@ class Material(nn.Module):
         # torch.Size([9, 32])
 
         # (Pdb) self['kd_ks_normal']
-        # MLPTexture3D(
+        # Texture(
         #   (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
         #   (net): _MLP(
         #     (net): Sequential(

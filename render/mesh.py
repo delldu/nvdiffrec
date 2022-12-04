@@ -83,68 +83,8 @@ def load_mesh(filename, mtl_override=None):
         return obj.load_obj(filename, clear_ks=True, mtl_override=mtl_override)
     assert False, "Invalid mesh file extension"
 
-######################################################################################
-# Compute AABB
-######################################################################################
-def aabb(mesh):
-    return torch.min(mesh.v_pos, dim=0).values, torch.max(mesh.v_pos, dim=0).values
 
 ######################################################################################
-# Compute unique edge list from attribute/vertex index list
-######################################################################################
-def compute_edges(attr_idx, return_inverse=False):
-    with torch.no_grad():
-        # Create all edges, packed by triangle
-        all_edges = torch.cat((
-            torch.stack((attr_idx[:, 0], attr_idx[:, 1]), dim=-1),
-            torch.stack((attr_idx[:, 1], attr_idx[:, 2]), dim=-1),
-            torch.stack((attr_idx[:, 2], attr_idx[:, 0]), dim=-1),
-        ), dim=-1).view(-1, 2)
-
-        # Swap edge order so min index is always first
-        order = (all_edges[:, 0] > all_edges[:, 1]).long().unsqueeze(dim=1)
-        sorted_edges = torch.cat((
-            torch.gather(all_edges, 1, order),
-            torch.gather(all_edges, 1, 1 - order)
-        ), dim=-1)
-
-        # Eliminate duplicates and return inverse mapping
-        return torch.unique(sorted_edges, dim=0, return_inverse=return_inverse)
-
-######################################################################################
-# Compute unique edge to face mapping from attribute/vertex index list
-######################################################################################
-def compute_edge_to_face_mapping(attr_idx, return_inverse=False):
-    with torch.no_grad():
-        # Get unique edges
-        # Create all edges, packed by triangle
-        all_edges = torch.cat((
-            torch.stack((attr_idx[:, 0], attr_idx[:, 1]), dim=-1),
-            torch.stack((attr_idx[:, 1], attr_idx[:, 2]), dim=-1),
-            torch.stack((attr_idx[:, 2], attr_idx[:, 0]), dim=-1),
-        ), dim=-1).view(-1, 2)
-
-        # Swap edge order so min index is always first
-        order = (all_edges[:, 0] > all_edges[:, 1]).long().unsqueeze(dim=1)
-        sorted_edges = torch.cat((
-            torch.gather(all_edges, 1, order),
-            torch.gather(all_edges, 1, 1 - order)
-        ), dim=-1)
-
-        # Elliminate duplicates and return inverse mapping
-        unique_edges, idx_map = torch.unique(sorted_edges, dim=0, return_inverse=True)
-
-        tris = torch.arange(attr_idx.shape[0]).repeat_interleave(3).cuda()
-
-        tris_per_edge = torch.zeros((unique_edges.shape[0], 2), dtype=torch.int64).cuda()
-
-        # Compute edge to face table
-        mask0 = order[:,0] == 0
-        mask1 = order[:,0] == 1
-        tris_per_edge[idx_map[mask0], 0] = tris[mask0]
-        tris_per_edge[idx_map[mask1], 1] = tris[mask1]
-
-        return tris_per_edge
 
 ######################################################################################
 # Simple smooth vertex normal computation
