@@ -25,7 +25,7 @@ from dataset.dataset_llff import DatasetLLFF
 
 # Import topology / geometry trainers
 from geometry.dmtet import DMTetGeometry
-from geometry.dlmesh import DLMesh
+from geometry.dlmesh import RefineMesh
 
 from render import obj
 from render import material
@@ -134,10 +134,38 @@ def initial_guess_material(geometry, FLAGS):
     ks_min, ks_max = torch.tensor(FLAGS.ks_min, dtype=torch.float32, device='cuda'), torch.tensor(FLAGS.ks_max, dtype=torch.float32, device='cuda')
     nrm_min, nrm_max = torch.tensor(FLAGS.nrm_min, dtype=torch.float32, device='cuda'), torch.tensor(FLAGS.nrm_max, dtype=torch.float32, device='cuda')
 
-    mlp_min = torch.cat((kd_min[0:3], ks_min, nrm_min), dim=0)
-    mlp_max = torch.cat((kd_max[0:3], ks_max, nrm_max), dim=0)
+    # kd_min [0.0, 0.0, 0.0, 0.0]
+    # kd_max [1.0, 1.0, 1.0, 1.0]
+    # ks_min [0, 0.25, 0]
+    # ks_max [1.0, 1.0, 1.0]
+    # nrm_min [-1.0, -1.0, 0.0]
+    # nrm_max [1.0, 1.0, 1.0]
+
+    mlp_min = torch.cat((kd_min[0:3], ks_min, nrm_min), dim=0) # mlp_min.size() -- [9], kd, ks, normal
+    mlp_max = torch.cat((kd_max[0:3], ks_max, nrm_max), dim=0) # mlp_max.size() -- [9], kd, ks, normal
+
+    # geometry.getAABB()
+    # tensor([-1.0500, -1.0500, -1.0500], device='cuda:0'), 
+    # tensor([1.0500, 1.0500, 1.0500], device='cuda:0')
     mlp_map_opt = mlptexture.MLPTexture3D(geometry.getAABB(), channels=9, min_max=[mlp_min, mlp_max])
 
+    # mlp_map_opt
+    # MLPTexture3D(
+    #   (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, 
+    #         dtype=torch.float16, hyperparams={'base_resolution': 16, 
+    #         'interpolation': 'Linear', 'log2_hashmap_size': 19, 
+    #         'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 
+    #         'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
+    #   (net): _MLP(
+    #     (net): Sequential(
+    #       (0): Linear(in_features=32, out_features=32, bias=False)
+    #       (1): ReLU()
+    #       (2): Linear(in_features=32, out_features=32, bias=False)
+    #       (3): ReLU()
+    #       (4): Linear(in_features=32, out_features=9, bias=False)
+    #     )
+    #   )
+    # )
     mat =  material.Material({'kd_ks_normal' : mlp_map_opt})
     mat['bsdf'] = 'pbr'
 
@@ -235,10 +263,6 @@ class Trainer(torch.nn.Module):
         self.image_loss_fn = image_loss_fn
         self.FLAGS = FLAGS
 
-        self.params = list(self.material.parameters())
-        self.params += list(self.light.parameters())
-        self.geo_params = list(self.geometry.parameters())
-
     def forward(self, target, it):
         self.light.build_mips()
         return self.geometry.tick(glctx, target, self.light, self.material, self.image_loss_fn, it)
@@ -303,16 +327,44 @@ def optimize_mesh(
     #  Image loss
     # ==============================================================================================
     image_loss_fn = torch.nn.functional.l1_loss # createLoss(FLAGS)
-
-    trainer_noddp = Trainer(glctx, geometry, lgt, opt_material, image_loss_fn, FLAGS)
+    trainer = Trainer(glctx, geometry, lgt, opt_material, image_loss_fn, FLAGS)
 
     # Single GPU training mode
-    trainer = trainer_noddp
-    optimizer_mesh = torch.optim.Adam(trainer_noddp.geo_params, lr=learning_rate_pos)
-    scheduler_mesh = torch.optim.lr_scheduler.LambdaLR(optimizer_mesh, lr_lambda=lambda x: lr_schedule(x, 0.9)) 
+    optimizer_mesh = torch.optim.Adam(list(trainer.geometry.parameters()), lr=learning_rate_pos)
+    # for k in trainer.geometry.parameters(): print(k.size())
+    # [36562] -- sdf
+    # [36562, 3] -- deform
 
-    optimizer = torch.optim.Adam(trainer_noddp.params, lr=learning_rate_mat)
+    scheduler_mesh = torch.optim.lr_scheduler.LambdaLR(optimizer_mesh, lr_lambda=lambda x: lr_schedule(x, 0.9)) 
+    # (Pdb) optimizer_mesh
+    # Adam (
+    # Parameter Group 0
+    #     amsgrad: False
+    #     betas: (0.9, 0.999)
+    #     eps: 1e-08
+    #     initial_lr: 0.03
+    #     lr: 0.03
+    #     weight_decay: 0
+    # )
+
+    optimizer = torch.optim.Adam(list(trainer.material.parameters()) + list(trainer.light.parameters()), lr=learning_rate_mat)
+    # for k in trainer.material.parameters(): print(k.size())
+    # [12599920] -- encoder
+    # [32, 32],  [32, 32], [9, 32] -- MLP network
+    # for k in trainer.light.parameters(): print(k.size())
+    # [6, 512, 512, 3] -- base, cube map
+
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x: lr_schedule(x, 0.9)) 
+    # (Pdb) optimizer
+    # Adam (
+    # Parameter Group 0
+    #     amsgrad: False
+    #     betas: (0.9, 0.999)
+    #     eps: 1e-08
+    #     initial_lr: 0.03
+    #     lr: 0.03
+    #     weight_decay: 0
+    # )
 
     # ==============================================================================================
     #  Training loop
@@ -529,11 +581,9 @@ if __name__ == "__main__":
     #  If no initial guess, use DMtets to create geometry
     # ==============================================================================================
     # Setup geometry for optimization
-    geometry = DMTetGeometry(FLAGS.dmtet_grid, FLAGS.mesh_scale, FLAGS)
-
+    geometry = DMTetGeometry(FLAGS.dmtet_grid, FLAGS.mesh_scale, FLAGS) # geometry.dmtet.DMTetGeometry
     # Setup textures, make initial guess from reference if possible
-    mat = initial_guess_material(geometry, FLAGS)
-
+    mat = initial_guess_material(geometry, FLAGS) # render.material.Material
     # Run optimization
     geometry, mat = optimize_mesh(glctx, geometry, mat, lgt, dataset_train, dataset_validate, 
                     FLAGS, pass_idx=0, pass_name="dmtet_pass1")
@@ -542,7 +592,7 @@ if __name__ == "__main__":
         validate(glctx, geometry, mat, lgt, dataset_validate, os.path.join(FLAGS.out_dir, "dmtet_validate"), FLAGS)
 
     # Create textured mesh from result
-    base_mesh = xatlas_uvmap(glctx, geometry, mat, FLAGS)
+    base_mesh = xatlas_uvmap(glctx, geometry, mat, FLAGS) # render.mesh.Mesh
 
     # Free temporaries / cached memory 
     torch.cuda.empty_cache()
@@ -554,25 +604,26 @@ if __name__ == "__main__":
     obj.write_obj(os.path.join(FLAGS.out_dir, "dmtet_mesh/"), base_mesh)
     light.save_env_map(os.path.join(FLAGS.out_dir, "dmtet_mesh/probe.hdr"), lgt)
 
-
     # ==============================================================================================
     #  Pass 2: Train with fixed topology (mesh)
     # ==============================================================================================
-    lgt = lgt.clone()
-    geometry = DLMesh(base_mesh, FLAGS)
-    geometry, mat = optimize_mesh(glctx, geometry, base_mesh.material, lgt, dataset_train, dataset_validate, FLAGS, 
+    # lgt = lgt.clone() # need ?
+    dlmesh = RefineMesh(base_mesh, FLAGS) # geometry.dlmesh.RefineMesh
+    dlmesh, mat = optimize_mesh(glctx, dlmesh, base_mesh.material, lgt, dataset_train, dataset_validate, FLAGS, 
                 pass_idx=1, pass_name="mesh_pass2", warmup_iter=100)
+
 
     # ==============================================================================================
     #  Validate
     # ==============================================================================================
     if FLAGS.validate:
-        validate(glctx, geometry, mat, lgt, dataset_validate, os.path.join(FLAGS.out_dir, "validate"), FLAGS)
+        validate(glctx, dlmesh, mat, lgt, dataset_validate, os.path.join(FLAGS.out_dir, "validate"), FLAGS)
 
     # ==============================================================================================
     #  Dump output
     # ==============================================================================================
-    final_mesh = geometry.getMesh(mat)
+    final_mesh = dlmesh.getMesh(mat) # render.mesh.Mesh
+
     os.makedirs(os.path.join(FLAGS.out_dir, "mesh"), exist_ok=True)
     obj.write_obj(os.path.join(FLAGS.out_dir, "mesh/"), final_mesh)
     light.save_env_map(os.path.join(FLAGS.out_dir, "mesh/probe.hdr"), lgt)

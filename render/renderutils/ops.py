@@ -184,13 +184,9 @@ class cubemap_diffuse_function(torch.autograd.Function):
         cubemap_grad = _get_plugin().cubemap_diffuse_backward(cubemap, dout)
         return cubemap_grad, None
 
-def cubemap_diffuse(cubemap, use_python=False):
+def cubemap_diffuse(cubemap):
     # cubemap.size() -- [6, 16, 16, 3]
-    # use_python = False
-    if use_python:
-        assert False
-    else:
-        out = cubemap_diffuse_function.apply(cubemap)
+    out = cubemap_diffuse_function.apply(cubemap)
     if torch.is_anomaly_enabled(): # False
         assert torch.all(torch.isfinite(out)), "Output of cubemap_diffuse contains inf or NaN"
     return out

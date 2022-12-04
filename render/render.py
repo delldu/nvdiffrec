@@ -38,8 +38,7 @@ def shade(
         gb_texc_deriv,
         view_pos,
         lgt,
-        material,
-        bsdf
+        material
     ):
     # gb_pos.size() -- [1, 512, 512, 3]
     # gb_geometric_normal.size() -- [1, 512, 512, 3]
@@ -54,13 +53,12 @@ def shade(
     #   (kd): Texture2D()
     #   (ks): Texture2D()
     # )
-    # bsdf = None
 
     ################################################################################
     # Texture lookups
     ################################################################################
     perturbed_nrm = None
-    if 'kd_ks_normal' in material: # True
+    if 'kd_ks_normal' in material:
         # ==> Here !!!
         # Combined texture, used for MLPs because lookups are expensive
         all_tex_jitter = material['kd_ks_normal'].sample(gb_pos + torch.normal(mean=0, std=0.01, size=gb_pos.shape, device="cuda"))
@@ -75,6 +73,7 @@ def shade(
         kd = material['kd'].sample(gb_texc, gb_texc_deriv)
         ks = material['ks'].sample(gb_texc, gb_texc_deriv)[..., 0:3] # skip alpha
         if 'normal' in material:
+            # ==> pdb.set_trace
             perturbed_nrm = material['normal'].sample(gb_texc, gb_texc_deriv)
         kd_grad = torch.sum(torch.abs(kd_jitter[..., 0:3] - kd[..., 0:3]), dim=-1, keepdim=True) / 3
 
@@ -85,43 +84,19 @@ def shade(
     ################################################################################
     # Normal perturbation & normal bend
     ################################################################################
-    if 'no_perturbed_nrm' in material and material['no_perturbed_nrm']: # False
-        pdb.set_trace()
-        perturbed_nrm = None
-
     gb_normal = ru.shading_normal(gb_pos, view_pos, perturbed_nrm, gb_normal, gb_tangent, gb_geometric_normal, two_sided_shading=True, opengl=True)
 
     ################################################################################
     # Evaluate BSDF
     ################################################################################
-
-    assert 'bsdf' in material or bsdf is not None, "Material must specify a BSDF type"
-    bsdf = material['bsdf'] if bsdf is None else bsdf
-    # bsdf -- 'pbr'
-    if bsdf == 'pbr': # True
-        if isinstance(lgt, light.EnvironmentLight):
-            shaded_col = lgt.shade(gb_pos, gb_normal, kd, ks, view_pos, specular=True)
-        else:
-            assert False, "Invalid light type"
-    elif bsdf == 'diffuse': # False
-        if isinstance(lgt, light.EnvironmentLight):
-            shaded_col = lgt.shade(gb_pos, gb_normal, kd, ks, view_pos, specular=False)
-        else:
-            assert False, "Invalid light type"
-    elif bsdf == 'normal':
-        shaded_col = (gb_normal + 1.0)*0.5
-    elif bsdf == 'tangent':
-        shaded_col = (gb_tangent + 1.0)*0.5
-    elif bsdf == 'kd':
-        shaded_col = kd
-    elif bsdf == 'ks':
-        shaded_col = ks
+    if isinstance(lgt, light.EnvironmentLight):
+        shaded_color = lgt.shade(gb_pos, gb_normal, kd, ks, view_pos, specular=True)
     else:
-        assert False, "Invalid BSDF '%s'" % bsdf
-    
+        assert False, "Invalid light type"
+
     # Return multiple buffers
     buffers = {
-        'shaded'    : torch.cat((shaded_col, alpha), dim=-1), # [1, 512, 512, 4]
+        'shaded'    : torch.cat((shaded_color, alpha), dim=-1), # [1, 512, 512, 4]
         'kd_grad'   : torch.cat((kd_grad, alpha), dim=-1), # [1, 512, 512, 2]
         'occlusion' : torch.cat((ks[..., :1], alpha), dim=-1) # [1, 512, 512, 2]
     }
@@ -143,7 +118,6 @@ def render_layer(
         resolution,
         spp,
         msaa,
-        bsdf
     ):
     # rast.size() -- [1, 512, 512, 4]
     # rast_deriv.size() -- [1, 512, 512, 4]
@@ -154,7 +128,6 @@ def render_layer(
     # resolution = [512, 512]
     # spp ====== 1
     # msaa = True
-    # bsdf = None
 
     full_res = [resolution[0]*spp, resolution[1]*spp]
 
@@ -199,7 +172,7 @@ def render_layer(
     ################################################################################
 
     buffers = shade(gb_pos, gb_geometric_normal, gb_normal, gb_tangent, gb_texc, gb_texc_deriv, 
-        view_pos, lgt, mesh.material, bsdf)
+        view_pos, lgt, mesh.material)
 
     ################################################################################
     # Prepare output
@@ -230,7 +203,6 @@ def render_mesh(
         num_layers  = 1,
         msaa        = False,
         background  = None, 
-        bsdf        = None
     ):
     # ctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7f88cfa59940>
     # mesh = <render.mesh.Mesh object at 0x7f88cf9e9be0>
@@ -280,8 +252,8 @@ def render_mesh(
             rast, db = peeler.rasterize_next_layer()
             # rast.size() -- [1, 512, 512, 4]
             # db.size() -- [1, 512, 512, 4]
-            # resolution, spp, msaa, bsdf -- ([512, 512], 1, True, None)
-            layers += [(render_layer(rast, db, mesh, view_pos, lgt, resolution, spp, msaa, bsdf), rast)]
+            # resolution, spp, msaa -- ([512, 512], 1, True)
+            layers += [(render_layer(rast, db, mesh, view_pos, lgt, resolution, spp, msaa), rast)]
 
     # Setup background
     if background is not None: # False ?

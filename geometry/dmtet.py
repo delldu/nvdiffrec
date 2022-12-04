@@ -9,6 +9,7 @@
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from render import mesh
 from render import render
@@ -172,7 +173,7 @@ def sdf_reg_loss(sdf, all_edges):
 #  Geometry interface
 ###############################################################################
 
-class DMTetGeometry(torch.nn.Module):
+class DMTetGeometry(nn.Module):
     def __init__(self, grid_res, scale, FLAGS):
         super(DMTetGeometry, self).__init__()
         # grid_res = 64
@@ -189,11 +190,15 @@ class DMTetGeometry(torch.nn.Module):
 
         # Random init
         sdf = torch.rand_like(self.verts[:,0]) - 0.1 #  self.verts[:,0].shape -- [36562]
-        self.sdf = torch.nn.Parameter(sdf.clone().detach(), requires_grad=True) # self.sdf.shape -- [36562]
-        self.register_parameter('sdf', self.sdf)
+        self.sdf = nn.Parameter(sdf.clone().detach(), requires_grad=True) # self.sdf.shape -- [36562]
+        self.register_parameter('sdf', self.sdf) # [36562]
 
-        self.deform = torch.nn.Parameter(torch.zeros_like(self.verts), requires_grad=True) # self.deform.shape -- [36562, 3]
-        self.register_parameter('deform', self.deform)
+        self.deform = nn.Parameter(torch.zeros_like(self.verts), requires_grad=True) # self.deform.shape -- [36562, 3]
+        self.register_parameter('deform', self.deform) # [36562, 3]
+
+        # for k in self.parameters(): print(k.size())
+        # torch.Size([36562])
+        # torch.Size([36562, 3])
 
     def generate_edges(self):
         with torch.no_grad():
@@ -215,8 +220,6 @@ class DMTetGeometry(torch.nn.Module):
         # self.verts.size() -- [36562, 3]
         # self.sdf.size() -- [36562]
         # self.deform.size() -- [36562, 3]
-
-
         v_deformed = self.verts + 2 / (self.grid_res * 2) * torch.tanh(self.deform)
 
         # self.indices.size() -- [192492, 4]
@@ -229,10 +232,10 @@ class DMTetGeometry(torch.nn.Module):
 
         return imesh
 
-    def render(self, glctx, target, lgt, opt_material, bsdf=None):
+    def render(self, glctx, target, lgt, opt_material):
         opt_mesh = self.getMesh(opt_material)
         return render.render_mesh(glctx, opt_mesh, target['mvp'], target['campos'], lgt, target['resolution'], spp=target['spp'], 
-                                        msaa=True, background=target['background'], bsdf=bsdf)
+                                        msaa=True, background=target['background'])
 
 
     def tick(self, glctx, target, lgt, opt_material, loss_fn, iteration):

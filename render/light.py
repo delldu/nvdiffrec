@@ -55,13 +55,10 @@ class EnvironmentLight(nn.Module):
 
     def __init__(self, base):
         super(EnvironmentLight, self).__init__()
-        self.mtx = None      
+        # self.mtx = None      
         self.base = nn.Parameter(base.clone().detach(), requires_grad=True)
-        self.register_parameter('env_base', self.base) # xxxx8888 !!!
+        # self.register_parameter('env_base', self.base) # xxxx8888 !!!
         # self.base.size() -- [6, 512, 512, 3]
-
-    # def xfm(self, mtx):
-    #     self.mtx = mtx
 
     def clone(self):
         return EnvironmentLight(self.base.clone().detach())
@@ -88,6 +85,16 @@ class EnvironmentLight(nn.Module):
             self.specular[idx] = ru.cubemap_specular(self.specular[idx], roughness, cutoff) 
         self.specular[-1] = ru.cubemap_specular(self.specular[-1], 1.0, cutoff)
 
+        # pdb.set_trace()
+        # len(self.specular) -- 6
+        # (Pdb) for i in range(6): print(i, ":", self.specular[i].shape)
+        # 0 : torch.Size([6, 512, 512, 3])
+        # 1 : torch.Size([6, 256, 256, 3])
+        # 2 : torch.Size([6, 128, 128, 3])
+        # 3 : torch.Size([6, 64, 64, 3])
+        # 4 : torch.Size([6, 32, 32, 3])
+        # 5 : torch.Size([6, 16, 16, 3])        
+
     def regularizer(self):
         white = (self.base[..., 0:1] + self.base[..., 1:2] + self.base[..., 2:3]) / 3.0
         return torch.mean(torch.abs(self.base - white))
@@ -110,16 +117,16 @@ class EnvironmentLight(nn.Module):
             diff_col = kd
 
         reflvec = util.safe_normalize(util.reflect(wo, gb_normal))
-        nrmvec = gb_normal
-        if self.mtx is not None: # Rotate lookup -- False
-            mtx = torch.as_tensor(self.mtx, dtype=torch.float32, device='cuda')
-            reflvec = ru.xfm_vectors(reflvec.view(reflvec.shape[0], reflvec.shape[1] * reflvec.shape[2], reflvec.shape[3]), mtx).view(*reflvec.shape)
-            nrmvec  = ru.xfm_vectors(nrmvec.view(nrmvec.shape[0], nrmvec.shape[1] * nrmvec.shape[2], nrmvec.shape[3]), mtx).view(*nrmvec.shape)
+        # nrmvec = gb_normal
+        # if self.mtx is not None: # Rotate lookup -- False
+        #     mtx = torch.as_tensor(self.mtx, dtype=torch.float32, device='cuda')
+        #     reflvec = ru.xfm_vectors(reflvec.view(reflvec.shape[0], reflvec.shape[1] * reflvec.shape[2], reflvec.shape[3]), mtx).view(*reflvec.shape)
+        #     nrmvec  = ru.xfm_vectors(nrmvec.view(nrmvec.shape[0], nrmvec.shape[1] * nrmvec.shape[2], nrmvec.shape[3]), mtx).view(*nrmvec.shape)
 
         # Diffuse lookup
         # Perform texture sampling on self.diffuse
-        diffuse = dr.texture(self.diffuse[None, ...], nrmvec.contiguous(), filter_mode='linear', boundary_mode='cube')
-        shaded_col = diffuse * diff_col
+        diffuse = dr.texture(self.diffuse[None, ...], gb_normal.contiguous(), filter_mode='linear', boundary_mode='cube')
+        shaded_color = diffuse * diff_col
 
         if specular: # True
             # Lookup FG term from lookup texture
@@ -137,9 +144,9 @@ class EnvironmentLight(nn.Module):
 
             # Compute aggregate lighting
             reflectance = spec_col * fg_lookup[...,0:1] + fg_lookup[...,1:2]
-            shaded_col += spec * reflectance
+            shaded_color += spec * reflectance
 
-        return shaded_col * (1.0 - ks[..., 0:1]) # Modulate by hemisphere visibility
+        return shaded_color * (1.0 - ks[..., 0:1]) # Modulate by hemisphere visibility
 
 ######################################################################################
 # Load and store

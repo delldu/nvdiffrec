@@ -20,9 +20,9 @@ import pdb
 #  Geometry interface
 ###############################################################################
 
-class DLMesh(nn.Module):
+class RefineMesh(nn.Module):
     def __init__(self, initial_guess, FLAGS):
-        super(DLMesh, self).__init__()
+        super(RefineMesh, self).__init__()
         self.FLAGS = FLAGS
         self.initial_guess = initial_guess
         self.mesh = initial_guess.clone()
@@ -31,12 +31,13 @@ class DLMesh(nn.Module):
         self.mesh.v_pos = nn.Parameter(self.mesh.v_pos, requires_grad=True)
         self.register_parameter('vertex_pos', self.mesh.v_pos) # could not been detected !!!
         
-    @torch.no_grad()
-    def getAABB(self):
-        pdb.set_trace()
-        return mesh.aabb(self.mesh)
+    # @torch.no_grad()
+    # def getAABB(self):
+    #     pdb.set_trace()
+    #     return mesh.aabb(self.mesh)
 
     def getMesh(self, material):
+        # Stage2
         self.mesh.material = material
 
         imesh = mesh.Mesh(base=self.mesh)
@@ -45,7 +46,7 @@ class DLMesh(nn.Module):
         imesh = mesh.compute_tangents(imesh)
         return imesh
 
-    def render(self, glctx, target, lgt, opt_material, bsdf=None):
+    def render(self, glctx, target, lgt, opt_material):
         opt_mesh = self.getMesh(opt_material)
         # self.FLAGS.layers -- 1
         # (Pdb) opt_mesh.v_pos.size() -- [5238, 3]
@@ -74,7 +75,7 @@ class DLMesh(nn.Module):
         # (Pdb) target['background'].min(), max() -- 1.0, 1.0
 
         return render.render_mesh(glctx, opt_mesh, target['mvp'], target['campos'], lgt, target['resolution'], spp=target['spp'], 
-                                    num_layers=self.FLAGS.layers, msaa=True, background=target['background'], bsdf=bsdf)
+                                    num_layers=self.FLAGS.layers, msaa=True, background=target['background'])
 
     def tick(self, glctx, target, lgt, opt_material, loss_fn, iteration):
         # ==============================================================================================

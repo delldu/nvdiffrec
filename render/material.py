@@ -28,7 +28,34 @@ class Material(nn.Module):
         for key in mat_dict.keys():
             self.mat_keys.add(key)
             self[key] = mat_dict[key]
-        # mat_dict -- {'name': 'feathers'}
+
+        # self.keys() -- {'kd_ks_normal'}
+        # for k in self.parameters(): print(k.size())
+        # torch.Size([12599920])
+        # torch.Size([32, 32])
+        # torch.Size([32, 32])
+        # torch.Size([9, 32])
+
+        # (Pdb) self['kd_ks_normal']
+        # MLPTexture3D(
+        #   (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
+        #   (net): _MLP(
+        #     (net): Sequential(
+        #       (0): Linear(in_features=32, out_features=32, bias=False)
+        #       (1): ReLU()
+        #       (2): Linear(in_features=32, out_features=32, bias=False)
+        #       (3): ReLU()
+        #       (4): Linear(in_features=32, out_features=9, bias=False)
+        #     )
+        #   )
+        # )        
+
+        # (Pdb) for k in self['kd_ks_normal'].encoder.parameters(): print(k.size())
+        # torch.Size([12599920])
+        # (Pdb) for k in self['kd_ks_normal'].net.parameters(): print(k.size())
+        # torch.Size([32, 32])
+        # torch.Size([32, 32])
+        # torch.Size([9, 32])
 
     def __contains__(self, key):
         return hasattr(self, key)
