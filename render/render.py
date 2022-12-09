@@ -61,20 +61,20 @@ def shade(
     if 'kd_ks_normal' in material:
         # ==> Here !!!
         # Combined texture, used for MLPs because lookups are expensive
-        all_tex_jitter = material['kd_ks_normal'].sample(gb_pos + torch.normal(mean=0, std=0.01, size=gb_pos.shape, device="cuda"))
-        all_tex = material['kd_ks_normal'].sample(gb_pos)
+        all_tex_jitter = material['kd_ks_normal'].texture_sample(gb_pos + torch.normal(mean=0, std=0.01, size=gb_pos.shape, device="cuda"))
+        all_tex = material['kd_ks_normal'].texture_sample(gb_pos) # mlp forward
         assert all_tex.shape[-1] == 9 or all_tex.shape[-1] == 10, "Combined kd_ks_normal must be 9 or 10 channels"
         kd, ks, perturbed_nrm = all_tex[..., :-6], all_tex[..., -6:-3], all_tex[..., -3:]
         # Compute albedo (kd) gradient, used for material regularizer
         kd_grad = torch.sum(torch.abs(all_tex_jitter[..., :-6] - all_tex[..., :-6]), dim=-1, keepdim=True) / 3
     else:
         # ==> pdb.set_trace()
-        kd_jitter  = material['kd'].sample(gb_texc + torch.normal(mean=0, std=0.005, size=gb_texc.shape, device="cuda"), gb_texc_deriv)
-        kd = material['kd'].sample(gb_texc, gb_texc_deriv)
-        ks = material['ks'].sample(gb_texc, gb_texc_deriv)[..., 0:3] # skip alpha
+        kd_jitter  = material['kd'].texture2d_sample(gb_texc + torch.normal(mean=0, std=0.005, size=gb_texc.shape, device="cuda"), gb_texc_deriv)
+        kd = material['kd'].texture2d_sample(gb_texc, gb_texc_deriv)
+        ks = material['ks'].texture2d_sample(gb_texc, gb_texc_deriv)[..., 0:3] # skip alpha
         if 'normal' in material:
             # ==> pdb.set_trace
-            perturbed_nrm = material['normal'].sample(gb_texc, gb_texc_deriv)
+            perturbed_nrm = material['normal'].texture2d_sample(gb_texc, gb_texc_deriv)
         kd_grad = torch.sum(torch.abs(kd_jitter[..., 0:3] - kd[..., 0:3]), dim=-1, keepdim=True) / 3
 
     # Separate kd into alpha and color, default alpha = 1
@@ -313,7 +313,7 @@ def render_uv(ctx, mesh, resolution, mlp_texture):
     # gb_pos.size() -- [1, 1024, 1024, 3]
 
     # Sample out textures from MLP
-    all_tex = mlp_texture.sample(gb_pos)
+    all_tex = mlp_texture.texture_sample(gb_pos) # forward
     assert all_tex.shape[-1] == 9 or all_tex.shape[-1] == 10, "Combined kd_ks_normal must be 9 or 10 channels"
     perturbed_nrm = all_tex[..., -3:]
 
@@ -321,4 +321,5 @@ def render_uv(ctx, mesh, resolution, mlp_texture):
     # all_tex.size() -- [1, 1024, 1024, 9]
     # perturbed_nrm.size() -- [1, 1024, 1024, 3]
     # mask, kd, ks, normal
-    return (rast[..., -1:] > 0).float(), all_tex[..., :-6], all_tex[..., -6:-3], util.safe_normalize(perturbed_nrm)
+    # mask -- (rast[..., -1:] > 0).float(), useless
+    return all_tex[..., :-6], all_tex[..., -6:-3], util.safe_normalize(perturbed_nrm)

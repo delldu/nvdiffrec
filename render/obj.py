@@ -88,7 +88,7 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
             normals.append([float(v) for v in line.split()[1:]])
 
     # load faces
-    activeMatIdx = None
+    active_material_index = None
     used_materials = []
     faces, tfaces, nfaces, mfaces = [], [], [], []
     for line in lines:
@@ -100,7 +100,7 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
             mat = _find_mat(all_materials, line.split()[1])
             if not mat in used_materials:
                 used_materials.append(mat)
-            activeMatIdx = used_materials.index(mat)
+            active_material_index = used_materials.index(mat)
         elif prefix == 'f': # Parse face
             vs = line.split()[1:]
             nv = len(vs)
@@ -117,7 +117,7 @@ def load_obj(filename, clear_ks=True, mtl_override=None):
                 v2 = int(vv[0]) - 1
                 t2 = int(vv[1]) - 1 if vv[1] != "" else -1
                 n2 = int(vv[2]) - 1 if vv[2] != "" else -1
-                mfaces.append(activeMatIdx)
+                mfaces.append(active_material_index)
                 faces.append([v0, v1, v2])
                 tfaces.append([t0, t1, t2])
                 nfaces.append([n0, n1, n2])

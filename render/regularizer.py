@@ -8,7 +8,6 @@
 # its affiliates is strictly prohibited.
 
 import torch
-import nvdiffrast.torch as dr
 from . import util
 from . import mesh
 

@@ -52,12 +52,12 @@ class DMTet:
         # edges_ex2.size() -- [398826, 2]
         with torch.no_grad():
             order = (edges_ex2[:,0] > edges_ex2[:,1]).long()
-            order = order.unsqueeze(dim=1)
+            order = order.unsqueeze(dim=1) # [403992, 1]
 
             a = torch.gather(input=edges_ex2, index=order, dim=1)      
-            b = torch.gather(input=edges_ex2, index=1-order, dim=1)  
+            b = torch.gather(input=edges_ex2, index=1-order, dim=1)
 
-        return torch.stack([a, b],-1)
+        return torch.stack([a, b],-1) # [403992, 1, 2]
 
     def map_uv(self, faces, face_gidx, max_idx):
         # faces.size() -- [75920, 3]
@@ -106,9 +106,9 @@ class DMTet:
         # sdf_n.size() -- [36562]
         # tet_fx4.size() -- [192492, 4]
         with torch.no_grad():
-            occ_n = sdf_n > 0
+            occ_n = sdf_n > 0 # [36562]
             occ_fx4 = occ_n[tet_fx4.reshape(-1)].reshape(-1,4)
-            occ_sum = torch.sum(occ_fx4, -1)
+            occ_sum = torch.sum(occ_fx4, -1) # min -- 0, max == 4, size() -- [192492]
             valid_tets = (occ_sum>0) & (occ_sum<4)
             occ_sum = occ_sum[valid_tets]
 
@@ -133,7 +133,7 @@ class DMTet:
         edges_to_interp_sdf = torch.flip(edges_to_interp_sdf, [1])/denominator
         verts = (edges_to_interp * edges_to_interp_sdf).sum(1)
 
-        idx_map = idx_map.reshape(-1,6)
+        idx_map = idx_map.reshape(-1,6) # [65284, 6]
 
         v_id = torch.pow(2, torch.arange(4, dtype=torch.long, device="cuda"))
         tetindex = (occ_fx4[valid_tets] * v_id.unsqueeze(0)).sum(-1)
@@ -143,7 +143,7 @@ class DMTet:
         faces = torch.cat((
             torch.gather(input=idx_map[num_triangles == 1], dim=1, index=self.triangle_table[tetindex[num_triangles == 1]][:, :3]).reshape(-1,3),
             torch.gather(input=idx_map[num_triangles == 2], dim=1, index=self.triangle_table[tetindex[num_triangles == 2]][:, :6]).reshape(-1,3),
-        ), dim=0)
+        ), dim=0) # [74336, 3]
 
         # Get global face index (static, does not depend on topology)
         num_tets = tet_fx4.shape[0]
@@ -197,8 +197,8 @@ class DMTetGeometry(nn.Module):
         self.register_parameter('deform', self.deform) # [36562, 3]
 
         # for k in self.parameters(): print(k.size())
-        # torch.Size([36562])
-        # torch.Size([36562, 3])
+        # torch.Size([36562]) -- sdf
+        # torch.Size([36562, 3]) -- deform
 
     def generate_edges(self):
         with torch.no_grad():
@@ -268,4 +268,3 @@ class DMTetGeometry(nn.Module):
         reg_loss += lgt.regularizer() * 0.005
 
         return img_loss, reg_loss
-

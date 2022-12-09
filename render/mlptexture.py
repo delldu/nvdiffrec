@@ -89,7 +89,7 @@ class Texture(nn.Module):
         print("Encoder output: %d dims" % (self.encoder.n_output_dims))
 
     # Sample texture at a given location
-    def sample(self, texc):
+    def texture_sample(self, texc):
         _texc = (texc.view(-1, 3) - self.AABB[0][None, ...]) / (self.AABB[1][None, ...] - self.AABB[0][None, ...])
         _texc = torch.clamp(_texc, min=0, max=1)
         

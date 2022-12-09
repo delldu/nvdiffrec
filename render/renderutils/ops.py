@@ -233,7 +233,7 @@ def __ndfBounds(res, roughness, cutoff):
     return costheta[idx], bounds
 __ndfBoundsDict = {}
 
-def cubemap_specular(cubemap, roughness, cutoff=0.99, use_python=False):
+def cubemap_specular(cubemap, roughness, cutoff=0.99):
     # ==> pdb.set_trace()
     # cubemap.size() -- [6, 512, 512, 3]
     # roughness = 0.08
@@ -241,16 +241,13 @@ def cubemap_specular(cubemap, roughness, cutoff=0.99, use_python=False):
     # use_python = False
     assert cubemap.shape[0] == 6 and cubemap.shape[1] == cubemap.shape[2], "Bad shape for cubemap tensor: %s" % str(cubemap.shape)
 
-    if use_python:
-        assert False
-    else:
-        key = (cubemap.shape[1], roughness, cutoff)
-        if key not in __ndfBoundsDict:
-            __ndfBoundsDict[key] = __ndfBounds(*key)
-        #  __ndfBoundsDict.keys() -- dict_keys([(512, 0.08, 0.99)])
-        # __ndfBoundsDict[(512, 0.08, 0.99)][0] -- 0.9997669655912325
-        # __ndfBoundsDict[(512, 0.08, 0.99)][1].size() -- [6, 512, 512, 24]
-        out = cubemap_specular_function.apply(cubemap, roughness, *__ndfBoundsDict[key])
+    key = (cubemap.shape[1], roughness, cutoff)
+    if key not in __ndfBoundsDict:
+        __ndfBoundsDict[key] = __ndfBounds(*key)
+    #  __ndfBoundsDict.keys() -- dict_keys([(512, 0.08, 0.99)])
+    # __ndfBoundsDict[(512, 0.08, 0.99)][0] -- 0.9997669655912325
+    # __ndfBoundsDict[(512, 0.08, 0.99)][1].size() -- [6, 512, 512, 24]
+    out = cubemap_specular_function.apply(cubemap, roughness, *__ndfBoundsDict[key])
     if torch.is_anomaly_enabled():
         assert torch.all(torch.isfinite(out)), "Output of cubemap_specular contains inf or NaN"
     return out[..., 0:3] / out[..., 3:]

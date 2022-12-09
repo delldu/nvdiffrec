@@ -15,7 +15,6 @@ import json
 
 import numpy as np
 import torch
-import nvdiffrast.torch as dr
 import xatlas
 
 # Import data readers / generators
@@ -104,7 +103,7 @@ def xatlas_uvmap(glctx, geometry, mat, FLAGS):
 
     new_mesh = mesh.Mesh(v_tex=uvs, t_tex_idx=faces, base=eval_mesh)
 
-    mask, kd, ks, normal = render.render_uv(glctx, new_mesh, FLAGS.texture_res, 
+    kd, ks, normal = render.render_uv(glctx, new_mesh, FLAGS.texture_res, 
         eval_mesh.material['kd_ks_normal'])
     
     if FLAGS.layers > 1:
@@ -240,22 +239,6 @@ def validate(glctx, geometry, opt_material, lgt, dataset_validate, out_dir, FLAG
 class Trainer(torch.nn.Module):
     def __init__(self, glctx, geometry, lgt, mat, image_loss_fn, FLAGS):
         super(Trainer, self).__init__()
-        # geometry = DMTetGeometry()
-        # lgt = EnvironmentLight()
-        # mat = Material(
-        #   (kd_ks_normal): Texture(
-        #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
-        #     (net): _MLP(
-        #       (net): Sequential(
-        #         (0): Linear(in_features=32, out_features=32, bias=False)
-        #         (1): ReLU()
-        #         (2): Linear(in_features=32, out_features=32, bias=False)
-        #         (3): ReLU()
-        #         (4): Linear(in_features=32, out_features=9, bias=False)
-        #       )
-        #     )
-        #   )
-        # )
         self.glctx = glctx
         self.geometry = geometry
         self.light = lgt
@@ -281,21 +264,6 @@ def optimize_mesh(
     pass_name="",
     ):
     # glctx = <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7fb240aad580>
-    # geometry = DMTetGeometry()
-    # opt_material = Material(
-    #   (kd_ks_normal): Texture(
-    #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
-    #     (net): _MLP(
-    #       (net): Sequential(
-    #         (0): Linear(in_features=32, out_features=32, bias=False)
-    #         (1): ReLU()
-    #         (2): Linear(in_features=32, out_features=32, bias=False)
-    #         (3): ReLU()
-    #         (4): Linear(in_features=32, out_features=9, bias=False)
-    #       )
-    #     )
-    #   )
-    # )
     # lgt = EnvironmentLight()
     # dataset_train = <dataset.dataset_mesh.DatasetMesh object at 0x7fb240aadee0>
     # dataset_validate = <dataset.dataset_mesh.DatasetMesh object at 0x7fb240a89b50>
@@ -309,6 +277,35 @@ def optimize_mesh(
     # kd_max=[1.0, 1.0, 1.0, 1.0], ks_min=[0, 0.25, 0], ks_max=[1.0, 1.0, 1.0], 
     # nrm_min=[-1.0, -1.0, 0.0], nrm_max=[1.0, 1.0, 1.0], cam_near_far=[0.1, 1000.0])
     # pass_name = 'dmtet_pass1'
+
+    # print("-" * 12, "optimize_mesh pass_index: ", pass_idx, "-" * 12)
+    # print("  geometry: ", geometry)
+    # print("  opt_material: ", opt_material)
+    
+    # ------------ optimize_mesh pass_index:  0 ------------
+    #   geometry:  DMTetGeometry()
+    #   opt_material:  Material(
+    #   (kd_ks_normal): Texture(
+    #     (encoder): Encoding(n_input_dims=3, n_output_dims=32, seed=1337, dtype=torch.float16, hyperparams={'base_resolution': 16, 'interpolation': 'Linear', 'log2_hashmap_size': 19, 'n_features_per_level': 2, 'n_levels': 16, 'otype': 'Grid', 'per_level_scale': 1.4472692012786865, 'type': 'Hash'})
+    #     (net): _MLP(
+    #       (net): Sequential(
+    #         (0): Linear(in_features=32, out_features=32, bias=False)
+    #         (1): ReLU()
+    #         (2): Linear(in_features=32, out_features=32, bias=False)
+    #         (3): ReLU()
+    #         (4): Linear(in_features=32, out_features=9, bias=False)
+    #       )
+    #     )
+    #   )
+    # )
+
+    # ------------ optimize_mesh pass_index:  1 ------------
+    #   geometry:  RefineMesh()
+    #   opt_material:  Material(
+    #   (kd): Texture2D()
+    #   (ks): Texture2D()
+    #   (normal): Texture2D()
+    # )
 
     # ==============================================================================================
     #  Setup torch optimizer
@@ -554,6 +551,7 @@ if __name__ == "__main__":
 
     os.makedirs(FLAGS.out_dir, exist_ok=True)
 
+    import nvdiffrast.torch as dr
     glctx = dr.RasterizeGLContext() # <nvdiffrast.torch.ops.RasterizeGLContext object at 0x7fc2b5b39fd0> 
 
     # ==============================================================================================

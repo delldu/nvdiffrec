@@ -70,7 +70,7 @@ class Texture2D(nn.Module):
         self.min_max = min_max
 
     # Filtered (trilinear) sample texture at a given location
-    def sample(self, texc, texc_deriv, filter_mode='linear-mipmap-linear'):
+    def texture2d_sample(self, texc, texc_deriv, filter_mode='linear-mipmap-linear'):
         # self.data.size() -- [1, 2048, 2048, 3]
         # texc.size() -- [1, 512, 512, 2]
         # texc_deriv.size() -- [1, 512, 512, 4]

@@ -55,7 +55,6 @@ class EnvironmentLight(nn.Module):
 
     def __init__(self, base):
         super(EnvironmentLight, self).__init__()
-        # self.mtx = None      
         self.base = nn.Parameter(base.clone().detach(), requires_grad=True)
         # self.register_parameter('env_base', self.base) # xxxx8888 !!!
         # self.base.size() -- [6, 512, 512, 3]
@@ -85,7 +84,6 @@ class EnvironmentLight(nn.Module):
             self.specular[idx] = ru.cubemap_specular(self.specular[idx], roughness, cutoff) 
         self.specular[-1] = ru.cubemap_specular(self.specular[-1], 1.0, cutoff)
 
-        # pdb.set_trace()
         # len(self.specular) -- 6
         # (Pdb) for i in range(6): print(i, ":", self.specular[i].shape)
         # 0 : torch.Size([6, 512, 512, 3])
@@ -117,11 +115,6 @@ class EnvironmentLight(nn.Module):
             diff_col = kd
 
         reflvec = util.safe_normalize(util.reflect(wo, gb_normal))
-        # nrmvec = gb_normal
-        # if self.mtx is not None: # Rotate lookup -- False
-        #     mtx = torch.as_tensor(self.mtx, dtype=torch.float32, device='cuda')
-        #     reflvec = ru.xfm_vectors(reflvec.view(reflvec.shape[0], reflvec.shape[1] * reflvec.shape[2], reflvec.shape[3]), mtx).view(*reflvec.shape)
-        #     nrmvec  = ru.xfm_vectors(nrmvec.view(nrmvec.shape[0], nrmvec.shape[1] * nrmvec.shape[2], nrmvec.shape[3]), mtx).view(*nrmvec.shape)
 
         # Diffuse lookup
         # Perform texture sampling on self.diffuse
@@ -157,9 +150,10 @@ def _load_env_hdr(fn, scale=1.0):
     # fn = 'data/irrmaps/aerodynamics_workshop_2k.hdr'
     # scale = 2.0
     latlong_img = torch.tensor(util.load_image(fn), dtype=torch.float32, device='cuda')*scale
+    # (Pdb) latlong_img.size() -- [1024, 2048, 3], latlong_img.min() -- 0., latlong_img.max() -- 110.5000 !!!
     cubemap = util.latlong_to_cubemap(latlong_img, [512, 512])
-    # latlong_img.size() -- [1024, 2048, 3]
-    # cubemap.size() -- [6, 512, 512, 3]
+    # (Pdb) cubemap.size() -- [6, 512, 512, 3]
+    # (Pdb) cubemap.min() -- 0., cubemap.max() -- 109.8704 !!!
     l = EnvironmentLight(cubemap)
     l.build_mips()
     # l.env_base.size() -- [6, 512, 512, 3]

@@ -103,7 +103,8 @@ def load_mtl(fn, clear_ks=True):
             else:
                 material[prefix] = torch.tensor(tuple(float(d) for d in data), dtype=torch.float32, device='cuda')
 
-    # Convert everything to textures. Our code expects 'kd' and 'ks' to be texture maps. So replace constants with 1x1 maps
+    # Convert everything to textures. Our code expects 'kd' and 'ks' to be texture maps. 
+    # So replace constants with 1x1 maps
     for mat in materials:
         # mtl_path -- 'data/bob'
         if not 'bsdf' in mat: # False
@@ -123,7 +124,7 @@ def load_mtl(fn, clear_ks=True):
             mat['normal'] = texture.load_texture2D(os.path.join(mtl_path, mat['bump']), lambda_fn=lambda x: x * 2 - 1, channels=3)
 
         # Convert Kd from sRGB to linear RGB
-        mat['kd'] = texture.srgb_to_rgb(mat['kd'])
+        mat['kd'] = texture.srgb_to_rgb(mat['kd']) # ===> Convert !!!
 
         if clear_ks: # True
             # Override ORM occlusion (red) channel by zeros. We hijack this channel
